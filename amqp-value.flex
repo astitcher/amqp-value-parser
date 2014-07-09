@@ -29,15 +29,15 @@ SIGN    ("+"|"-")
 "false"     { return PN_TOK_FALSE; }
 "null"      { return PN_TOK_NULL; }
 
-b\"[^\"]*\" { yylval->t_str = yytext; return PN_TOK_BINARY; }
-\"[^\"]*\"  { yylval->t_str = yytext; return PN_TOK_STRING; }
+b\"[^\"]*\" { yylval->t_str.bytes = yytext+2; yylval->t_str.size = yyleng-3; return PN_TOK_BINARY; }
+\"[^\"]*\"  { yylval->t_str.bytes = yytext+1; yylval->t_str.size = yyleng-2; return PN_TOK_STRING; }
 
 {SIGN}?{DIGIT}+    { yylval->t_int = atoll(yytext); return PN_TOK_INT; }
 {SIGN}?({DIGIT}+"."|{DIGIT}*("."{DIGIT}+)?)([eE]{DIGIT}+)? {
     yylval->t_float = atof(yytext); return PN_TOK_FLOAT;
 }
 
-{ALNUM}+    { yylval->t_str = yytext; return PN_TOK_ID; }
+{ALNUM}+    { yylval->t_str.bytes = yytext; yylval->t_str.size = yyleng; return PN_TOK_ID; }
 
 .           { return PN_TOK_ERROR; }
 %%

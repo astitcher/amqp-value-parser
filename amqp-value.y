@@ -1,11 +1,11 @@
-/*%define api.pure*/
-/*%define api.prefix pn_parser_*/
-%pure_parser
+%define api.pure
+/*%define api.prefix "pn_parser_"*/
+/*%pure_parser*/
 %name-prefix="pn_parser_"
 
 %{
     #include <stdint.h>
-    
+
     #include <proton/codec.h>
 %}
 
@@ -20,7 +20,10 @@
 %token PN_TOK_ERROR "<illegal character>"
 
 %union {
-    const char* t_str;
+    struct {
+        size_t size;
+        char*  bytes;
+    }           t_str;
     uint64_t    t_int;
     double      t_float;
 }
@@ -41,8 +44,8 @@ value
 | map
 | list
 | symbol
-| PN_TOK_BINARY         { pn_data_put_binary(data, pn_bytes(strlen($1)-3, $1+2)); }
-| PN_TOK_STRING         { pn_data_put_string(data, pn_bytes(strlen($1)-2, $1+1)); }
+| PN_TOK_BINARY         { pn_data_put_binary(data, pn_bytes($1.size, $1.bytes)); }
+| PN_TOK_STRING         { pn_data_put_string(data, pn_bytes($1.size, $1.bytes)); }
 | PN_TOK_INT            { pn_data_put_long(data, $1); }
 | PN_TOK_FLOAT          { pn_data_put_float(data, $1); }
 | "true"                { pn_data_put_bool(data, true); }
@@ -92,8 +95,8 @@ list
 ;
 
 symbol
-: ':' PN_TOK_STRING     { pn_data_put_symbol(data, pn_bytes(strlen($2)-2, $2+1)); }
-| ':' PN_TOK_ID         { pn_data_put_symbol(data, pn_bytes(strlen($2), $2)); }
+: ':' PN_TOK_STRING     { pn_data_put_symbol(data, pn_bytes($2.size, $2.bytes)); }
+| ':' PN_TOK_ID         { pn_data_put_symbol(data, pn_bytes($2.size, $2.bytes)); }
 ;
 
 %%

@@ -1,4 +1,4 @@
-CFLAGS=-g -Wall -ansi
+CFLAGS=-g -Wall -std=gnu99
 
 .PHONY: all
 
