@@ -1,6 +1,4 @@
 %define api.pure
-/*%define api.prefix "pn_parser_"*/
-/*%pure_parser*/
 %name-prefix="pn_parser_"
 
 %{
@@ -104,24 +102,37 @@ symbol
 
 #include <stdio.h>
 
-int main()
+int pn_data_parse(pn_data_t* data, const char* s)
+{
+    yyscan_t scanner;
+    pn_parser_lex_init(&scanner);
+    YY_BUFFER_STATE buffer = pn_parser__scan_string(s, scanner);
+    int r = pn_parser_parse(scanner, data);
+    pn_parser__delete_buffer(buffer, scanner);
+    pn_parser_lex_destroy(scanner);
+
+    return r;
+}
+
+int main(int argc, const char* argv[])
 {
     pn_data_t* data = pn_data(16);
 
-    yyscan_t scanner;
-    pn_parser_lex_init(&scanner);
-    int r = pn_parser_parse(scanner, data);
-    pn_parser_lex_destroy(scanner);
+    for (int i=1; i<argc; ++i) {
+        pn_data_clear(data);
 
-    pn_data_rewind(data);
-    pn_data_print(data);
-    /* pn_data_dump() has bad bug until 0.8 with complex types */
-    /*pn_data_rewind(data); */
-    /*pn_data_dump(data); */
-    pn_data_free(data);    
+        int r = pn_data_parse(data, argv[i]);
 
-    printf("\n");
-    printf(r==0 ? "succeeded\n" : "failed\n");
+        pn_data_print(data);
+        printf("\n");
+
+        /* pn_data_dump() has bad bug until 0.8 with complex types */
+        /*pn_data_dump(data); */
+
+        printf(r==0 ? "succeeded\n" : "failed\n");
+    }
+    pn_data_free(data);
+
     return 0;
 }
 
