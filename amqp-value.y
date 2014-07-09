@@ -5,7 +5,8 @@
 
 %{
     #include <stdint.h>
-   
+    
+    #include <proton/codec.h>
 %}
 
 %token <t_str>   PN_TOK_BINARY
@@ -26,26 +27,27 @@
 
 /* void* is really yyscan_t, but it can't be defined here */
 %parse-param {void* scanner}
+%parse-param {pn_data_t* data}
 %lex-param {yyscan_t scanner}
 
 %{
     #include "amqp-value.lex.h"
-    void pn_parser_error(yyscan_t, const char*);
+    void pn_parser_error(yyscan_t, pn_data_t*, const char*);
 %}
 %%
 
 value
-: described_value       { printf("described_value\n"); }
-| map                   { printf("map\n"); } 
-| list                  { printf("list\n"); }
-| symbol                { printf("symbol\n"); }
-| PN_TOK_BINARY         { printf("binary\n"); }
-| PN_TOK_STRING         { printf("string\n"); }
-| PN_TOK_INT            { printf("int\n"); }
-| PN_TOK_FLOAT          { printf("float\n"); }
-| "true"                { printf("true\n"); }
-| "false"               { printf("false\n"); }
-| "null"                { printf("null\n"); }
+: described_value
+| map
+| list
+| symbol
+| PN_TOK_BINARY         { pn_data_put_binary(data, pn_bytes(strlen($1)-3, $1+2)); }
+| PN_TOK_STRING         { pn_data_put_string(data, pn_bytes(strlen($1)-2, $1+1)); }
+| PN_TOK_INT            { pn_data_put_long(data, $1); }
+| PN_TOK_FLOAT          { pn_data_put_float(data, $1); }
+| "true"                { pn_data_put_bool(data, true); }
+| "false"               { pn_data_put_bool(data, false); }
+| "null"                { pn_data_put_null(data); }
 ;
 
 descriptor
@@ -53,7 +55,8 @@ descriptor
 ;
 
 described_value
-: '@' descriptor value
+: '@'                   { pn_data_put_described(data); pn_data_enter(data); }
+  descriptor value      { pn_data_exit(data); }
 ;
 
 map_key
@@ -71,8 +74,9 @@ map_list
 ;
 
 map
-: '{' '}'
-| '{' map_list '}'
+: '{' '}'               { pn_data_put_map(data); }
+| '{'                   { pn_data_put_map(data); pn_data_enter(data); }
+  map_list '}'          { pn_data_exit(data); }
 ;
 
 
@@ -82,13 +86,14 @@ list_list
 ;
 
 list
-: '[' ']'
-| '[' list_list ']'
+: '[' ']'               { pn_data_put_list(data); }
+| '['                   { pn_data_put_list(data); pn_data_enter(data); } 
+   list_list ']'        { pn_data_exit(data); }
 ;
 
 symbol
-: ':' PN_TOK_STRING
-| ':' PN_TOK_ID
+: ':' PN_TOK_STRING     { pn_data_put_symbol(data, pn_bytes(strlen($2)-2, $2+1)); }
+| ':' PN_TOK_ID         { pn_data_put_symbol(data, pn_bytes(strlen($2), $2)); }
 ;
 
 %%
@@ -99,12 +104,20 @@ int main()
 {
     yyscan_t scanner;
     pn_parser_lex_init(&scanner);
-    int r = pn_parser_parse(scanner);
+    
+    pn_data_t* data = pn_data(16);
+    int r = pn_parser_parse(scanner, data);
+    pn_data_rewind(data);
+    pn_data_print(data);
+    /* pn_data_dump() has bad bug until 0.8 with complex types */
+    /*pn_data_rewind(data); */
+    /*pn_data_dump(data); */
+    printf("\n");
     printf(r==0 ? "succeeded\n" : "failed\n");
     return 0;
 }
 
-void pn_parser_error(yyscan_t scanner, const char* error)
+void pn_parser_error(yyscan_t scanner, pn_data_t* data, const char* error)
 {
     printf("Error: %s\n", error);
 }

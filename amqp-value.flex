@@ -10,6 +10,7 @@
 %{
     #include <stdint.h>
     #include <stdlib.h>
+    #include <proton/codec.h>
     #include "amqp-value.tab.h"
 %}
 

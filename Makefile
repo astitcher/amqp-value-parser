@@ -1,4 +1,6 @@
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -ansi
+
+.PHONY: all
 
 all: amqp-value-test
 
@@ -11,8 +13,8 @@ amqp-value.tab.c amqp-value.tab.h: amqp-value.y
 amqp-value.lex.c amqp-value.lex.h: amqp-value.flex
 	flex -o amqp-value.lex.c --header-file=amqp-value.lex.h $^
 
-amqp-value.tab.o: amqp-value.lex.h
-amqp-value.lex.o: amqp-value.tab.h
-amqp-value-test:: amqp-value.tab.o amqp-value.lex.o
-	${CC} ${CFLAGS} -o $@ $^
+amqp-value.tab.o: amqp-value.tab.c amqp-value.lex.h
+amqp-value.lex.o: amqp-value.lex.c amqp-value.tab.h
+amqp-value-test: amqp-value.tab.o amqp-value.lex.o
+	${CC} ${CFLAGS} -o $@ $^ -lqpid-proton
 
