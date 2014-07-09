@@ -97,6 +97,7 @@ list
 symbol
 : ':' PN_TOK_STRING     { pn_data_put_symbol(data, pn_bytes($2.size, $2.bytes)); }
 | ':' PN_TOK_ID         { pn_data_put_symbol(data, pn_bytes($2.size, $2.bytes)); }
+| PN_TOK_ID             { pn_data_put_symbol(data, pn_bytes($1.size, $1.bytes)); }
 ;
 
 %%
