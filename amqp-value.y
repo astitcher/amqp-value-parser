@@ -102,16 +102,20 @@ symbol
 
 int main()
 {
+    pn_data_t* data = pn_data(16);
+
     yyscan_t scanner;
     pn_parser_lex_init(&scanner);
-    
-    pn_data_t* data = pn_data(16);
     int r = pn_parser_parse(scanner, data);
+    pn_parser_lex_destroy(scanner);
+
     pn_data_rewind(data);
     pn_data_print(data);
     /* pn_data_dump() has bad bug until 0.8 with complex types */
     /*pn_data_rewind(data); */
     /*pn_data_dump(data); */
+    pn_data_free(data);    
+
     printf("\n");
     printf(r==0 ? "succeeded\n" : "failed\n");
     return 0;
@@ -119,6 +123,7 @@ int main()
 
 void pn_parser_error(yyscan_t scanner, pn_data_t* data, const char* error)
 {
+    pn_data_clear(data);
     printf("Error: %s\n", error);
 }
 
