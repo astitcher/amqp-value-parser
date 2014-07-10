@@ -1,5 +1,6 @@
 %define api.pure
 %name-prefix="pn_parser_"
+%error-verbose
 
 %{
     #include <stdint.h>
@@ -7,16 +8,16 @@
     #include <proton/codec.h>
 %}
 
-%token <t_str>   PN_TOK_BINARY
-%token <t_str>   PN_TOK_STRING
-%token <t_str>   PN_TOK_ID
-%token <t_float> PN_TOK_FLOAT
-%token <t_int>   PN_TOK_INT
-%token PN_TOK_DARROW "=>"
-%token PN_TOK_TRUE  "true"
-%token PN_TOK_FALSE "false"
-%token PN_TOK_NULL  "null"
-%token <t_err>   PN_TOK_ERROR "<illegal character>"
+%token <t_str>   PN_TOK_BINARY "Binary"
+%token <t_str>   PN_TOK_STRING "String"
+%token <t_str>   PN_TOK_ID     "Identifier"
+%token <t_float> PN_TOK_FLOAT  "Float"
+%token <t_int>   PN_TOK_INT    "Integer"
+%token           PN_TOK_DARROW "=>"
+%token           PN_TOK_TRUE   "true"
+%token           PN_TOK_FALSE  "false"
+%token           PN_TOK_NULL   "null"
+%token <t_err>   PN_TOK_ERROR  "<illegal character>"
 
 %union {
     struct {
@@ -35,7 +36,7 @@
 
 %{
     #include "amqp-value.lex.h"
-    void pn_parser_error(yyscan_t, pn_data_t*, const char*);
+    static void pn_parser_error(yyscan_t, pn_data_t*, const char*);
 %}
 
 %start value
@@ -123,7 +124,11 @@ symbol
 
 %%
 
-#include <stdio.h>
+static void pn_parser_error(yyscan_t scanner, pn_data_t* data, const char* error)
+{
+    pn_data_clear(data);
+    pn_error_set(pn_data_error(data), PN_ERR, error);
+}
 
 int pn_data_parse(pn_data_t* data, const char* s)
 {
@@ -137,6 +142,8 @@ int pn_data_parse(pn_data_t* data, const char* s)
     return r;
 }
 
+#include <stdio.h>
+
 int main(int argc, const char* argv[])
 {
     pn_data_t* data = pn_data(16);
@@ -146,27 +153,22 @@ int main(int argc, const char* argv[])
 
         int r = pn_data_parse(data, argv[i]);
 
-        pn_data_print(data);
-        printf("\n");
+        if (r==0) {
+            pn_data_print(data);
+            printf("\n");
 
-        /* pn_data_dump() has bad bug until 0.8 with complex types */
-        /*pn_data_dump(data); */
+            /* pn_data_dump() has bad bug until 0.8 with complex types */
+            /*pn_data_dump(data); */
 
-        printf(r==0 ? "succeeded\n" : "failed\n");
+            char buffer[1024];
+            int s = pn_data_encode(data, buffer, 1024);
 
-        char buffer[1024];
-        int s = pn_data_encode(data, buffer, 1024);
-
-        printf("Encoded: %d bytes\n", s);
+            printf("Encoded: %d bytes\n", s);
+        } else {
+            printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
+        }
     }
     pn_data_free(data);
 
     return 0;
 }
-
-void pn_parser_error(yyscan_t scanner, pn_data_t* data, const char* error)
-{
-    pn_data_clear(data);
-    printf("Error: %s\n", error);
-}
-
