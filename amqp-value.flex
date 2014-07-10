@@ -28,6 +28,7 @@ STRING  \"([^\"]|\\\")*\"
 {WS}
         /* single character tokens */
 {TOK}       { return yytext[0]; }
+"=>"        { return PN_TOK_DARROW; }
 "true"      { return PN_TOK_TRUE; }
 "false"     { return PN_TOK_FALSE; }
 "null"      { return PN_TOK_NULL; }

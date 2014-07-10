@@ -12,6 +12,7 @@
 %token <t_str>   PN_TOK_ID
 %token <t_float> PN_TOK_FLOAT
 %token <t_int>   PN_TOK_INT
+%token PN_TOK_DARROW "=>"
 %token PN_TOK_TRUE  "true"
 %token PN_TOK_FALSE "false"
 %token PN_TOK_NULL  "null"
@@ -49,14 +50,18 @@ value
 ;
 
 simple_value
-: symbol
+: descriptor_value
 | PN_TOK_BINARY         { pn_data_put_binary(data, pn_bytes($1.size, $1.bytes)); }
 | PN_TOK_STRING         { pn_data_put_string(data, pn_bytes($1.size, $1.bytes)); }
-| PN_TOK_INT            { pn_data_put_long(data, $1); }
 | PN_TOK_FLOAT          { pn_data_put_float(data, $1); }
 | "true"                { pn_data_put_bool(data, true); }
 | "false"               { pn_data_put_bool(data, false); }
 | "null"                { pn_data_put_null(data); }
+;
+
+descriptor_value
+: symbol
+| PN_TOK_INT            { pn_data_put_long(data, $1); }
 ;
 
 label
@@ -64,14 +69,13 @@ label
 ;
 
 descriptor
-: simple_value
+: descriptor_value
+| label '(' descriptor_value ')'
 ;
 
 described_value
 : '@'                   { pn_data_put_described(data); pn_data_enter(data); }
   descriptor value      { pn_data_exit(data); }
-| '@' label                { pn_data_put_described(data); pn_data_enter(data); }
-  '(' descriptor ')' value { pn_data_exit(data); }
 ;
 
 map_key
@@ -80,6 +84,7 @@ map_key
 
 map_entry
 : map_key '=' value
+| map_key "=>" value
 | map_key ':' value
 ;
 
