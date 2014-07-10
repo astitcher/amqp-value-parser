@@ -5,7 +5,12 @@
 %option noyywrap
 
 %option noinput nounput
-%option noyyget_lval noyyset_lval
+%option noyy_push_state noyy_pop_state noyy_top_state
+%option yy_scan_buffer yy_scan_bytes yy_scan_string
+%option noyyget_extra yyset_extra noyyget_leng noyyget_text
+%option noyyget_lineno noyyset_lineno noyyget_in noyyset_in
+%option noyyget_out noyyset_out noyyget_lval noyyset_lval
+%option noyyget_lloc noyyset_lloc noyyget_debug noyyset_debug
 
 %{
     #include <stdint.h>
@@ -14,7 +19,7 @@
     #include <proton/codec.h>
     #include "amqp-value.tab.h"
 
-    int pni_process_string_escapes(size_t size, char* s);
+    static int pni_process_string_escapes(size_t size, char* s);
 %}
 
 WS      [ \f\r\t\v\n]
@@ -60,7 +65,7 @@ b{STRING}   { yylval->t_str.bytes = yytext+2;
  *
  * @return number of processed characters
  */
-int pni_process_string_escapes(size_t size, char* s)
+static int pni_process_string_escapes(size_t size, char* s)
 {
     int count = 0;
     int value = 0;
