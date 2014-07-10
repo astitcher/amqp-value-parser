@@ -130,6 +130,11 @@ int main(int argc, const char* argv[])
         /*pn_data_dump(data); */
 
         printf(r==0 ? "succeeded\n" : "failed\n");
+
+        char buffer[1024];
+        int s = pn_data_encode(data, buffer, 1024);
+
+        printf("Encoded: %d bytes\n", s);
     }
     pn_data_free(data);
 
