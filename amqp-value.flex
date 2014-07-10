@@ -17,12 +17,12 @@
     int pni_process_string_escapes(size_t size, char* s);
 %}
 
-WS      [ \f\r\t\v]
+WS      [ \f\r\t\v\n]
 DIGIT   [0-9]
-ALNUM   [a-zA-Z0-9]
-TOK     [{}\[\]:,=@]
-SIGN    ("+"|"-")
-
+ALNUM   [-a-zA-Z0-9]
+TOK     [{}()\[\]:,=@]
+SIGN    [-+]
+STRING  \"([^\"]|\\\")*\"
 %%
         /* Ignore whitespace */
 {WS}
@@ -32,12 +32,12 @@ SIGN    ("+"|"-")
 "false"     { return PN_TOK_FALSE; }
 "null"      { return PN_TOK_NULL; }
 
-b\"([^\"]|\\\")*\" { yylval->t_str.bytes = yytext+2;
-                     yylval->t_str.size = pni_process_string_escapes(yyleng-3, yytext+2);
-                     return PN_TOK_BINARY; }
-\"([^\"]|\\\")*\"  { yylval->t_str.bytes = yytext+1;
-                     yylval->t_str.size = pni_process_string_escapes(yyleng-2, yytext+1);
-                     return PN_TOK_STRING; }
+b{STRING}   { yylval->t_str.bytes = yytext+2;
+              yylval->t_str.size = pni_process_string_escapes(yyleng-3, yytext+2);
+              return PN_TOK_BINARY; }
+{STRING}    { yylval->t_str.bytes = yytext+1;
+              yylval->t_str.size = pni_process_string_escapes(yyleng-2, yytext+1);
+              return PN_TOK_STRING; }
 
 {SIGN}?{DIGIT}+    { yylval->t_int = atoll(yytext); return PN_TOK_INT; }
 {SIGN}?({DIGIT}+"."|{DIGIT}*("."{DIGIT}+)?)([eE]{DIGIT}+)? {
@@ -46,7 +46,7 @@ b\"([^\"]|\\\")*\" { yylval->t_str.bytes = yytext+2;
 
 {ALNUM}+    { yylval->t_str.bytes = yytext; yylval->t_str.size = yyleng; return PN_TOK_ID; }
 
-.           { return PN_TOK_ERROR; }
+.           { yylval->t_err = *yytext; return PN_TOK_ERROR; }
 %%
 
 /* Process escape characters in string

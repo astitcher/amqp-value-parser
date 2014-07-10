@@ -15,13 +15,14 @@
 %token PN_TOK_TRUE  "true"
 %token PN_TOK_FALSE "false"
 %token PN_TOK_NULL  "null"
-%token PN_TOK_ERROR "<illegal character>"
+%token <t_err>   PN_TOK_ERROR "<illegal character>"
 
 %union {
     struct {
         size_t size;
         char*  bytes;
     }           t_str;
+    char        t_err;
     uint64_t    t_int;
     double      t_float;
 }
@@ -35,13 +36,20 @@
     #include "amqp-value.lex.h"
     void pn_parser_error(yyscan_t, pn_data_t*, const char*);
 %}
+
+%start value
+
 %%
 
 value
 : described_value
 | map
 | list
-| symbol
+| simple_value
+;
+
+simple_value
+: symbol
 | PN_TOK_BINARY         { pn_data_put_binary(data, pn_bytes($1.size, $1.bytes)); }
 | PN_TOK_STRING         { pn_data_put_string(data, pn_bytes($1.size, $1.bytes)); }
 | PN_TOK_INT            { pn_data_put_long(data, $1); }
@@ -51,17 +59,23 @@ value
 | "null"                { pn_data_put_null(data); }
 ;
 
+label
+: PN_TOK_ID
+;
+
 descriptor
-: value
+: simple_value
 ;
 
 described_value
 : '@'                   { pn_data_put_described(data); pn_data_enter(data); }
   descriptor value      { pn_data_exit(data); }
+| '@' label                { pn_data_put_described(data); pn_data_enter(data); }
+  '(' descriptor ')' value { pn_data_exit(data); }
 ;
 
 map_key
-: value
+: simple_value
 ;
 
 map_entry
@@ -80,10 +94,14 @@ map
   map_list '}'          { pn_data_exit(data); }
 ;
 
+list_entry
+: value
+| label '=' value
+;
 
 list_list
-: value
-| list_list ',' value
+: list_entry
+| list_list ',' list_entry
 ;
 
 list
