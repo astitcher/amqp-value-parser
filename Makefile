@@ -15,6 +15,6 @@ amqp-value.lex.c amqp-value.lex.h: amqp-value.flex
 
 amqp-value.tab.o: amqp-value.tab.c amqp-value.lex.h
 amqp-value.lex.o: amqp-value.lex.c amqp-value.tab.h
-amqp-value-test: amqp-value.tab.o amqp-value.lex.o
+amqp-value-test: amqp-value.tab.o amqp-value.lex.o main.o
 	${CC} ${CFLAGS} -o $@ $^ -lqpid-proton
 

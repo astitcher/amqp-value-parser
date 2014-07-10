@@ -2,11 +2,11 @@
 %name-prefix="pn_parser_"
 %error-verbose
 
-%{
+%code requires {
     #include <stdint.h>
 
     #include <proton/codec.h>
-%}
+}
 
 %token <t_str>   PN_TOK_BINARY "Binary"
 %token <t_str>   PN_TOK_STRING "String"
@@ -34,10 +34,14 @@
 %parse-param {pn_data_t* data}
 %lex-param {yyscan_t scanner}
 
-%{
+%code provides {
+    extern int pn_data_parse(pn_data_t* data, const char* s);
+}
+
+%code {
     #include "amqp-value.lex.h"
     static void pn_parser_error(yyscan_t, pn_data_t*, const char*);
-%}
+}
 
 %start value
 
@@ -140,35 +144,4 @@ int pn_data_parse(pn_data_t* data, const char* s)
     pn_parser_lex_destroy(scanner);
 
     return r;
-}
-
-#include <stdio.h>
-
-int main(int argc, const char* argv[])
-{
-    pn_data_t* data = pn_data(16);
-
-    for (int i=1; i<argc; ++i) {
-        pn_data_clear(data);
-
-        int r = pn_data_parse(data, argv[i]);
-
-        if (r==0) {
-            pn_data_print(data);
-            printf("\n");
-
-            /* pn_data_dump() has bad bug until 0.8 with complex types */
-            /*pn_data_dump(data); */
-
-            char buffer[1024];
-            int s = pn_data_encode(data, buffer, 1024);
-
-            printf("Encoded: %d bytes\n", s);
-        } else {
-            printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
-        }
-    }
-    pn_data_free(data);
-
-    return 0;
 }
