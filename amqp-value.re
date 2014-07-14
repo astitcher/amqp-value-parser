@@ -14,9 +14,6 @@ typedef struct {
     char*  bytes;
 } ByteRange;
 
-/*!max:re2c */
-char fillbuff[YYMAXFILL];
-
 #define RETURN_UPDATE_NOTOK(x) do { input->bytes = p; input->size = e-p; return (x); } while (true)
 #define RETURN_UPDATE(x) do { tok->start = t; tok->size = p-t; input->bytes = p; input->size = e-p; return (x); } while (true)
 
