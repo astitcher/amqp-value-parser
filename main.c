@@ -1,12 +1,15 @@
+#include <proton/codec.h>
+
 #include <stdio.h>
 
-#include "amqp-value.tab.h"
+extern int pn_data_parse(pn_data_t* data, const char* s);
 
 int main(int argc, const char* argv[])
 {
     pn_data_t* data = pn_data(16);
 
-    for (int i=1; i<argc; ++i) {
+    int i;
+    for (i=1; i<argc; ++i) {
         pn_data_clear(data);
 
         int r = pn_data_parse(data, argv[i]);
