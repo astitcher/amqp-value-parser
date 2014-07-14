@@ -4,6 +4,15 @@
 
 extern int pn_data_parse(pn_data_t* data, const char* s);
 
+void hexdump(size_t size, char* buffer)
+{
+    char* c;
+    for (c=buffer; c<buffer+size; c++) {
+        printf("%02hhx", *c);
+    }
+    printf("\n");
+}
+
 int main(int argc, const char* argv[])
 {
     pn_data_t* data = pn_data(16);
@@ -24,7 +33,8 @@ int main(int argc, const char* argv[])
             char buffer[1024];
             int s = pn_data_encode(data, buffer, 1024);
 
-            printf("Encoded: %d bytes\n", s);
+            printf("Encoded: %d bytes:\n", s);
+            hexdump(s, buffer);
         } else {
             printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
         }
