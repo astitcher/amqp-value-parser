@@ -20,6 +20,7 @@
 %type string { pn_bytes_t }
 %type id     { pn_bytes_t }
 %type int    { int64_t }
+%type uint   { uint64_t }
 %type float  { double }
 
 %syntax_error {
@@ -38,6 +39,9 @@ string(O) ::= STRING(S) . { O = S; }
 id(O)     ::= ID(S) .     { O = S; }
 /* Null terminate, then convert, then "unterminate" */
 int(O)    ::= INT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = atoll(S.start); *p = c; }
+uint(O)    ::= BINT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 2); *p = c; }
+uint(O)    ::= OINT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 8); *p = c; }
+uint(O)    ::= HINT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 16); *p = c; }
 float(O)  ::= FLOAT(S) .  { char* p = S.start+S.size; char c = *p; *p = '\0'; O = atof(S.start); *p = c; }
 
 value ::= described_value .
@@ -55,6 +59,7 @@ simple_value ::= NULL .                  { pn_data_put_null(data); }
 
 descriptor_value ::= symbol .
 descriptor_value ::= int(I) .            { pn_data_put_long(data, I); }
+descriptor_value ::= uint(I) .           { pn_data_put_ulong(data, I); }
 
 label ::= id .
 

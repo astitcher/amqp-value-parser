@@ -37,6 +37,9 @@ int scan(ByteRange* input, pn_bytes_t* tok)
 
     WS     = [ \f\r\t\v\n];
     DIGIT  = [0-9];
+    ODIGIT = [0-7];
+    BDIGIT = [0-1];
+    HDIGIT = [0-9a-fA-F];
     ALNUM  = [-a-zA-Z0-9];
     SIGN   = [-+];
     STRING = ["]([^"]|"\\\"")*["];
@@ -66,7 +69,11 @@ int scan(ByteRange* input, pn_bytes_t* tok)
                   tok->size = pni_process_string_escapes(p-t-2, t+1);
                   RETURN_UPDATE_NOTOK(PN_TOK_STRING); }
 
-    SIGN? DIGIT+    { RETURN_UPDATE(PN_TOK_INT); }
+    ("0b" | "0B") BDIGIT+ { t+=2; RETURN_UPDATE(PN_TOK_BINT); }
+    "0" ODIGIT+           { t+=1; RETURN_UPDATE(PN_TOK_OINT); }
+    ("0x" | "0X") HDIGIT+ { t+=2; RETURN_UPDATE(PN_TOK_HINT); }
+    SIGN? DIGIT+          { RETURN_UPDATE(PN_TOK_INT); }
+
     SIGN? (DIGIT+ "." |DIGIT* ("." DIGIT+)? ) ([eE]DIGIT+)? { RETURN_UPDATE(PN_TOK_FLOAT); }
 
     ALNUM+      { RETURN_UPDATE(PN_TOK_ID); }
