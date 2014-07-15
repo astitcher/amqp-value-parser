@@ -39,9 +39,9 @@ string(O) ::= STRING(S) . { O = S; }
 id(O)     ::= ID(S) .     { O = S; }
 /* Null terminate, then convert, then "unterminate" */
 int(O)    ::= INT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = atoll(S.start); *p = c; }
-uint(O)    ::= BINT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 2); *p = c; }
-uint(O)    ::= OINT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 8); *p = c; }
-uint(O)    ::= HINT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 16); *p = c; }
+uint(O)   ::= BINT(S) .   { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 2); *p = c; }
+uint(O)   ::= OINT(S) .   { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 8); *p = c; }
+uint(O)   ::= HINT(S) .   { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 16); *p = c; }
 float(O)  ::= FLOAT(S) .  { char* p = S.start+S.size; char c = *p; *p = '\0'; O = atof(S.start); *p = c; }
 
 value ::= described_value .
@@ -49,7 +49,9 @@ value ::= map .
 value ::= list .
 value ::= simple_value .
 
-simple_value ::= descriptor_value .
+simple_value ::= symbol .
+simple_value ::= int(I) .                { pn_data_put_long(data, I); }
+simple_value ::= uint(I) .               { pn_data_put_ulong(data, I); }
 simple_value ::= binary(S) .             { pn_data_put_binary(data, S); }
 simple_value ::= string(S) .             { pn_data_put_string(data, S); }
 simple_value ::= float(F) .              { pn_data_put_float(data, F); }
@@ -58,7 +60,7 @@ simple_value ::= FALSE .                 { pn_data_put_bool(data, false); }
 simple_value ::= NULL .                  { pn_data_put_null(data); }
 
 descriptor_value ::= symbol .
-descriptor_value ::= int(I) .            { pn_data_put_long(data, I); }
+descriptor_value ::= int(I) .            { pn_data_put_ulong(data, I); }
 descriptor_value ::= uint(I) .           { pn_data_put_ulong(data, I); }
 
 label ::= id .
