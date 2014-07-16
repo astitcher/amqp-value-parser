@@ -99,15 +99,10 @@ symbol ::= COLON id(S) .                 { pn_data_put_symbol(data, S); }
 symbol ::= id(S) .                       { pn_data_put_symbol(data, S); }
 
 %code {
+#include "amqp-value.re.c"
+
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct {
-    size_t size;
-    char*  bytes;
-} ByteRange;
-
-extern int scan(ByteRange* input, pn_bytes_t* tok);
 
 int pn_data_parse(pn_data_t* data, const char* s)
 {
@@ -117,7 +112,7 @@ int pn_data_parse(pn_data_t* data, const char* s)
     int tok;
     pn_bytes_t tokValue;
 
-    while ((tok=scan(&in, &tokValue))) {
+    while ((tok=pni_parser_scan(&in, &tokValue))) {
         PnParser(parser, tok, tokValue, data);
     }
     PnParser(parser, tok, tokValue, data);

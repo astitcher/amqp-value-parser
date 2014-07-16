@@ -17,7 +17,7 @@ typedef struct {
 #define RETURN_UPDATE_NOTOK(x) do { input->bytes = p; input->size = e-p; return (x); } while (true)
 #define RETURN_UPDATE(x) do { tok->start = t; tok->size = p-t; input->bytes = p; input->size = e-p; return (x); } while (true)
 
-int scan(ByteRange* input, pn_bytes_t* tok)
+static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
 {
     char* p = input->bytes;        /* cursor */
     char* e = p+input->size;       /* limit */

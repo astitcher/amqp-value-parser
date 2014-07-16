@@ -30,7 +30,8 @@ amqp-value.c amqp-value.h: amqp-value.lemon
 amqp-value.re.c: amqp-value.re
 	re2c -o amqp-value.re.c  amqp-value.re
 
-amqp-value.re.o: amqp-value.h
-amqp-value-lemon: main.o amqp-value.re.o amqp-value.o
+amqp-value.o: amqp-value.c amqp-value.re.c
+
+amqp-value-lemon: main.o amqp-value.o
 	${CC} ${CFLAGS} -o $@ $^ -lqpid-proton
 
