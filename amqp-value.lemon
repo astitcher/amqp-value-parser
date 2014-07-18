@@ -70,6 +70,10 @@ descriptor_value(O) ::= uint(I) .        { pn_data_put_ulong(data, I); O = I; }
 
 label(O) ::= id(I) .                     { O = I; }
 
+described_value_value ::= map .
+described_value_value ::= list .
+described_value_value ::= simple_value .
+
 descriptor(O) ::= descriptor_value(I) .  { O = I; }
 descriptor(O) ::= label(L) LPAREN descriptor_value(V) RPAREN .
                                          { int d = pni_lookup_performative(L.start, L.size);
@@ -82,7 +86,7 @@ descriptor(O) ::= label(L) LPAREN descriptor_value(V) RPAREN .
                                          }
 
 described_value_head ::= AT .            { pn_data_put_described(data); pn_data_enter(data); }
-described_value ::= described_value_head descriptor value . { pn_data_exit(data); }
+described_value ::= described_value_head descriptor described_value_value . { pn_data_exit(data); }
 
 map_key ::= simple_value .
 
