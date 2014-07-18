@@ -21,6 +21,7 @@ int main(int argc, const char* argv[])
     int i;
     for (i=1; i<argc; ++i) {
         pn_data_clear(data);
+        pn_error_clear(pn_data_error(data));
 
         int r = pn_data_parse(data, argv[i]);
 
