@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "amqp-performatives.c"
+
 }
 
 %extra_argument { pn_data_t* data }
@@ -19,9 +21,12 @@
 %type binary { pn_bytes_t }
 %type string { pn_bytes_t }
 %type id     { pn_bytes_t }
+%type label  { pn_bytes_t }
 %type int    { int64_t }
 %type uint   { uint64_t }
 %type float  { double }
+%type descriptor_value { uint64_t }
+%type descriptor { uint64_t }
 
 %syntax_error {
     pn_data_clear(data);
@@ -59,14 +64,22 @@ simple_value ::= TRUE .                  { pn_data_put_bool(data, true); }
 simple_value ::= FALSE .                 { pn_data_put_bool(data, false); }
 simple_value ::= NULL .                  { pn_data_put_null(data); }
 
-descriptor_value ::= symbol .
-descriptor_value ::= int(I) .            { pn_data_put_ulong(data, I); }
-descriptor_value ::= uint(I) .           { pn_data_put_ulong(data, I); }
+descriptor_value(O) ::= symbol .         { O = 0; }
+descriptor_value(O) ::= int(I) .         { pn_data_put_ulong(data, I); O = I; }
+descriptor_value(O) ::= uint(I) .        { pn_data_put_ulong(data, I); O = I; }
 
-label ::= id .
+label(O) ::= id(I) .                     { O = I; }
 
-descriptor ::= descriptor_value .
-descriptor ::= label LPAREN descriptor_value RPAREN .
+descriptor(O) ::= descriptor_value(I) .  { O = I; }
+descriptor(O) ::= label(L) LPAREN descriptor_value(V) RPAREN .
+                                         { int d = pni_lookup_performative(L.start, L.size);
+                                           if ( d && d!=V ) {
+                                             pn_error_format(pn_data_error(data), PN_ERR,
+                                               "Descriptor %.*s(%d) does not match value %d",
+                                               L.size, L.start, d, V);
+                                           }
+                                           O = V;
+                                         }
 
 described_value_head ::= AT .            { pn_data_put_described(data); pn_data_enter(data); }
 described_value ::= described_value_head descriptor value . { pn_data_exit(data); }

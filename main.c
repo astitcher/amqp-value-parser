@@ -1,4 +1,5 @@
 #include <proton/codec.h>
+#include <proton/engine.h>
 
 #include <stdio.h>
 

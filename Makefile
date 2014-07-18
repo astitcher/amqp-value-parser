@@ -25,12 +25,15 @@ amqp-value-yacc: amqp-value.tab.o amqp-value.lex.o main.o
 	${CC} ${CFLAGS} -o $@ $^ -lqpid-proton
 
 amqp-value.c amqp-value.h: amqp-value.lemon
-	lemon amqp-value.lemon
+	lemon $^
 
 amqp-value.re.c: amqp-value.re
-	re2c -o amqp-value.re.c  amqp-value.re
+	re2c -o $@  $^
 
-amqp-value.o: amqp-value.c amqp-value.re.c
+amqp-performatives.c : performatives.gperf
+	gperf --output-file $@ $^
+
+amqp-value.o: amqp-value.c amqp-value.re.c amqp-performatives.c
 
 amqp-value-lemon: main.o amqp-value.o
 	${CC} ${CFLAGS} -o $@ $^ -lqpid-proton
