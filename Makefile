@@ -8,7 +8,8 @@ CLEAN=\
 	amqp-value.tab.c amqp-value.tab.h amqp-value.lex.c amqp-value.lex.h amqp-value.out \
 	amqp-value.re.c amqp-value.c amqp-value.h \
 	*.o \
-	amqp-value-yacc amqp-value-lemon
+	amqp-value-yacc amqp-value-lemon \
+	amqp-performatives.c
 
 clean:
 	-rm $(CLEAN)
