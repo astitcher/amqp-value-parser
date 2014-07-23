@@ -71,7 +71,7 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     ("0x" | "0X") HDIGIT+ { t+=2; RETURN_UPDATE(PN_TOK_HINT); }
     SIGN? DIGIT+          { RETURN_UPDATE(PN_TOK_INT); }
 
-    SIGN? (DIGIT+ "." |DIGIT* ("." DIGIT+)? ) ([eE]DIGIT+)? { RETURN_UPDATE(PN_TOK_FLOAT); }
+    SIGN? (DIGIT+ "." |DIGIT* ("." DIGIT+)? ) ([eE]SIGN?DIGIT+)? { RETURN_UPDATE(PN_TOK_FLOAT); }
 
     ALNUM+      { RETURN_UPDATE(PN_TOK_ID); }
 
