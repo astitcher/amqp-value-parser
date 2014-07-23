@@ -42,12 +42,12 @@ start ::= error .
 binary(O) ::= BINARY(S) . { O = S; }
 string(O) ::= STRING(S) . { O = S; }
 id(O)     ::= ID(S) .     { O = S; }
-/* Null terminate, then convert, then "unterminate" */
-int(O)    ::= INT(S) .    { char* p = S.start+S.size; char c = *p; *p = '\0'; O = atoll(S.start); *p = c; }
-uint(O)   ::= BINT(S) .   { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 2); *p = c; }
-uint(O)   ::= OINT(S) .   { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 8); *p = c; }
-uint(O)   ::= HINT(S) .   { char* p = S.start+S.size; char c = *p; *p = '\0'; O = strtoull(S.start, 0, 16); *p = c; }
-float(O)  ::= FLOAT(S) .  { char* p = S.start+S.size; char c = *p; *p = '\0'; O = atof(S.start); *p = c; }
+/* No need to fiddle with strings as the conversion will halt on the first non-numeric character anyway */
+int(O)    ::= INT(S) .    { O = strtoull(S.start, 0, 10); }
+uint(O)   ::= BINT(S) .   { O = strtoull(S.start, 0, 2); }
+uint(O)   ::= OINT(S) .   { O = strtoull(S.start, 0, 8); }
+uint(O)   ::= HINT(S) .   { O = strtoull(S.start, 0, 16); }
+float(O)  ::= FLOAT(S) .  { O = strtod(S.start, 0); }
 
 value ::= described_value .
 value ::= map .
