@@ -121,21 +121,30 @@ symbol ::= id(S) .                       { pn_data_put_symbol(data, S); }
 #include <stdlib.h>
 #include <string.h>
 
-int pn_data_parse(pn_data_t* data, const char* s)
+int pn_data_parse(pn_data_t* data, size_t len, const char* s)
 {
-    void* parser = PnParserAlloc( malloc );
-    char* ws = strdup(s);
-    ByteRange in = { strlen(s), ws };
+    char* ws = malloc(len+1);
+    memcpy(ws, s, len);
+    /* Make sure string had 0 termination */
+    ws[len] = 0;
+    ByteRange in = { len, ws };
+
     int tok;
     pn_bytes_t tokValue;
 
+    void* parser = PnParserAlloc( malloc );
     while ((tok=pni_parser_scan(&in, &tokValue))) {
         PnParser(parser, tok, tokValue, data);
     }
     PnParser(parser, tok, tokValue, data);
+    PnParserFree(parser, free);
 
     free(ws);
-    PnParserFree(parser, free);
     return pn_data_errno(data);
+}
+
+int pn_data_parse_string(pn_data_t* data, const char* s)
+{
+    return pn_data_parse(data, strlen(s), s);
 }
 }
