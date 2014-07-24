@@ -21,9 +21,58 @@ void pump_collector(pn_collector_t* collector)
     pn_event_t* e = pn_collector_peek(collector);
     while (e) {
         printf("Event: %s\n", pn_event_type_name(pn_event_type(e)));
+        switch (pn_event_type(e)) {
+        case PN_CONNECTION_REMOTE_OPEN: {
+            pn_connection_t* connection = pn_event_connection(e);
+            pn_connection_open(connection);
+            break;
+        }
+        case PN_CONNECTION_REMOTE_CLOSE: {
+            pn_connection_t* connection = pn_event_connection(e);
+            pn_connection_close(connection);
+            break;
+        }
+        case PN_TRANSPORT: {
+            pn_transport_t* transport = pn_event_transport(e);
+            ssize_t n = pn_transport_pending(transport);
+            printf("Output: %zd bytes:\n", n);
+            hexdump(n, pn_transport_head(transport));
+            pn_transport_pop(transport, n);
+            break;
+        }
+        default:
+            break;
+        }
         pn_collector_pop(collector);
         e = pn_collector_peek(collector);
     };
+}
+
+void send_frame(pn_transport_t* transport, pn_collector_t* collector, const char* frame, size_t len)
+{
+    ssize_t n = pn_transport_push(transport, frame, len);
+    printf("Input: %zd bytes:\n", n);
+}
+
+ssize_t make_frame(pn_data_t* data, uint16_t channel, char* buffer, size_t len)
+{
+    // Encode frame
+    ssize_t s = pn_data_encode(data, buffer+8, 1016)+8;
+
+    // Write frame size
+    buffer[0] = (s >> 24 ) & 0xff;
+    buffer[1] = (s >> 16 ) & 0xff;
+    buffer[2] = (s >>  8 ) & 0xff;
+    buffer[3] =  s         & 0xff;
+    // Payload Offset (*4)
+    buffer[4] = 2;
+    // Write frame type (AMQP)
+    buffer[5] = 0;
+    // Write Channel
+    buffer[6] = (channel >> 8) & 0xff;
+    buffer[7] =  channel       & 0xff;
+
+    return s;
 }
 
 void process(pn_transport_t* transport, pn_collector_t* collector, pn_data_t* data, const char* str)
@@ -38,24 +87,18 @@ void process(pn_transport_t* transport, pn_collector_t* collector, pn_data_t* da
         printf("\n");
 
         char buffer[1024];
-        ssize_t s = pn_data_encode(data, buffer, 1024);
-
+        ssize_t s = make_frame(data, 0, buffer, sizeof(buffer));
         printf("Encoded: %zd bytes:\n", s);
         hexdump(s, buffer);
 
-        pn_transport_push(transport, buffer, s);
-        pump_collector(collector);
-        ssize_t n = pn_transport_pending(transport);
-        printf("Output: %zd bytes:\n", n);
-        hexdump(n, pn_transport_head(transport));
-        pn_transport_pop(transport, n);
+        send_frame(transport, collector, buffer, s);
         pump_collector(collector);
     } else {
         printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
     }
 }
 
-const char amqp10header[] = "AMQP\x00\x01\x00\x00";
+const char amqp10header[8] = "AMQP\x00\x01\x00\x00";
 int main(int argc, const char* argv[])
 {
     /* set up proton transport to receive data */
@@ -66,12 +109,9 @@ int main(int argc, const char* argv[])
     pn_transport_bind(transport, connection);
     pn_connection_collect(connection, collector);
 
-    pn_transport_push(transport, amqp10header, sizeof(amqp10header));
     pump_collector(collector);
-    ssize_t n = pn_transport_pending(transport);
-    printf("Output: %zd bytes:\n", n);
-    hexdump(n, pn_transport_head(transport));
-    pn_transport_pop(transport, n);
+
+    send_frame(transport, collector, amqp10header, sizeof(amqp10header));
     pump_collector(collector);
 
     pn_data_t* data = pn_data(16);
