@@ -16,6 +16,18 @@ void hexdump(size_t size, const char* buffer)
     printf("\n");
 }
 
+void empty_output(pn_transport_t* transport)
+{
+    ssize_t n = pn_transport_pending(transport);
+    if (n!=-1) {
+        printf("Output: %zd bytes:\n", n);
+        hexdump(n, pn_transport_head(transport));
+        pn_transport_pop(transport, n);
+    } else {
+        printf("Output EOS\n");
+    }
+}
+
 void pump_collector(pn_collector_t* collector)
 {
     pn_event_t* e = pn_collector_peek(collector);
@@ -34,10 +46,7 @@ void pump_collector(pn_collector_t* collector)
         }
         case PN_TRANSPORT: {
             pn_transport_t* transport = pn_event_transport(e);
-            ssize_t n = pn_transport_pending(transport);
-            printf("Output: %zd bytes:\n", n);
-            hexdump(n, pn_transport_head(transport));
-            pn_transport_pop(transport, n);
+            empty_output(transport);
             break;
         }
         default:
@@ -93,12 +102,16 @@ void process(pn_transport_t* transport, pn_collector_t* collector, pn_data_t* da
 
         send_frame(transport, collector, buffer, s);
         pump_collector(collector);
+        empty_output(transport);
     } else {
         printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
     }
 }
 
 const char amqp10header[8] = "AMQP\x00\x01\x00\x00";
+const char tls10header[8] = "AMQP\x02\x01\x00\x00";
+const char sasl10header[8] = "AMQP\x03\x01\x00\x00";
+
 int main(int argc, const char* argv[])
 {
     /* set up proton transport to receive data */
@@ -113,6 +126,7 @@ int main(int argc, const char* argv[])
 
     send_frame(transport, collector, amqp10header, sizeof(amqp10header));
     pump_collector(collector);
+    empty_output(transport);
 
     pn_data_t* data = pn_data(16);
 
@@ -132,6 +146,8 @@ int main(int argc, const char* argv[])
         }
         free(buffer);
     }
+    pn_transport_close_tail(transport);
+    empty_output(transport);
 
     pn_data_free(data);
 
