@@ -24,6 +24,10 @@
 
 WS      [ \f\r\t\v\n]
 DIGIT   [0-9]
+NZDIGIT [1-9]
+ODIGIT  [0-7]
+BDIGIT  [0-1]
+HDIGIT  [0-9a-fA-F]
 ALNUM   [-a-zA-Z0-9]
 TOK     [{}()\[\]:,=@]
 SIGN    [-+]
@@ -45,9 +49,14 @@ b{STRING}   { yylval->t_str.bytes = yytext+2;
               yylval->t_str.size = pni_process_string_escapes(yyleng-2, yytext+1);
               return PN_TOK_STRING; }
 
-{SIGN}?{DIGIT}+    { yylval->t_int = atoll(yytext); return PN_TOK_INT; }
-{SIGN}?({DIGIT}+"."|{DIGIT}*("."{DIGIT}+)?)([eE]{DIGIT}+)? {
-    yylval->t_float = atof(yytext); return PN_TOK_FLOAT;
+("0b"|"0B"){BDIGIT}+     { yylval->t_int = strtoull(yytext+2, 0,  1); return PN_TOK_UINT; }
+"0"{ODIGIT}+             { yylval->t_int = strtoull(yytext+1, 0,  8); return PN_TOK_UINT; }
+("0x"|"0X"){HDIGIT}+     { yylval->t_int = strtoull(yytext+2, 0, 16); return PN_TOK_UINT; }
+{SIGN}?{NZDIGIT}{DIGIT}* { yylval->t_int = strtoll (yytext,   0, 10); return PN_TOK_INT; }
+{SIGN}?{DIGIT}+"."([eE]{SIGN}?{DIGIT}+)?         |
+{SIGN}?{DIGIT}*"."{DIGIT}+([eE]{SIGN}?{DIGIT}+)? |
+{SIGN}?{DIGIT}+[eE]{SIGN}?{DIGIT}+               {
+    yylval->t_float = strtod(yytext, 0); return PN_TOK_FLOAT;
 }
 
 {ALNUM}+    { yylval->t_str.bytes = yytext; yylval->t_str.size = yyleng; return PN_TOK_ID; }

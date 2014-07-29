@@ -13,6 +13,7 @@
 %token <t_str>   PN_TOK_ID     "Identifier"
 %token <t_float> PN_TOK_FLOAT  "Float"
 %token <t_int>   PN_TOK_INT    "Integer"
+%token <t_uint>  PN_TOK_UINT   "UInteger"
 %token           PN_TOK_DARROW "=>"
 %token           PN_TOK_TRUE   "true"
 %token           PN_TOK_FALSE  "false"
@@ -25,7 +26,8 @@
         char*  bytes;
     }           t_str;
     char        t_err;
-    uint64_t    t_int;
+    int64_t     t_int;
+    uint64_t    t_uint;
     double      t_float;
 }
 
@@ -55,10 +57,12 @@ value
 ;
 
 simple_value
-: descriptor_value
+: symbol
+| PN_TOK_INT            { pn_data_put_long(data, $1); }
+| PN_TOK_UINT           { pn_data_put_ulong(data, $1); }
 | PN_TOK_BINARY         { pn_data_put_binary(data, pn_bytes($1.size, $1.bytes)); }
 | PN_TOK_STRING         { pn_data_put_string(data, pn_bytes($1.size, $1.bytes)); }
-| PN_TOK_FLOAT          { pn_data_put_float(data, $1); }
+| PN_TOK_FLOAT          { pn_data_put_double(data, $1); }
 | "true"                { pn_data_put_bool(data, true); }
 | "false"               { pn_data_put_bool(data, false); }
 | "null"                { pn_data_put_null(data); }
@@ -66,7 +70,8 @@ simple_value
 
 descriptor_value
 : symbol
-| PN_TOK_INT            { pn_data_put_long(data, $1); }
+| PN_TOK_INT            { pn_data_put_ulong(data, $1); }
+| PN_TOK_UINT           { pn_data_put_ulong(data, $1); }
 ;
 
 label
@@ -80,7 +85,13 @@ descriptor
 
 described_value
 : '@'                   { pn_data_put_described(data); pn_data_enter(data); }
-  descriptor value      { pn_data_exit(data); }
+  descriptor described_value_value { pn_data_exit(data); }
+;
+
+described_value_value
+: simple_value
+| map
+| list
 ;
 
 map_key
@@ -134,7 +145,7 @@ static void pn_parser_error(yyscan_t scanner, pn_data_t* data, const char* error
     pn_error_set(pn_data_error(data), PN_ERR, error);
 }
 
-int pn_data_parse(pn_data_t* data, const char* s)
+int pn_data_parse_string(pn_data_t* data, const char* s)
 {
     yyscan_t scanner;
     pn_parser_lex_init(&scanner);
