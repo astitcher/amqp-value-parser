@@ -34,6 +34,7 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
 
     WS     = [ \f\r\t\v\n];
     DIGIT  = [0-9];
+    NZDIGIT= [1-9];
     ODIGIT = [0-7];
     BDIGIT = [0-1];
     HDIGIT = [0-9a-fA-F];
@@ -67,11 +68,13 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
                   RETURN_UPDATE_NOTOK(PN_TOK_STRING); }
 
     ("0b" | "0B") BDIGIT+ { t+=2; RETURN_UPDATE(PN_TOK_BINT); }
-    "0" ODIGIT+           { t+=1; RETURN_UPDATE(PN_TOK_OINT); }
+    "0" ODIGIT*           { t+=1; RETURN_UPDATE(PN_TOK_OINT); }
     ("0x" | "0X") HDIGIT+ { t+=2; RETURN_UPDATE(PN_TOK_HINT); }
-    SIGN? DIGIT+          { RETURN_UPDATE(PN_TOK_INT); }
+    SIGN? NZDIGIT DIGIT*  { RETURN_UPDATE(PN_TOK_INT); }
 
-    SIGN? (DIGIT+ "." |DIGIT* ("." DIGIT+)? ) ([eE]SIGN?DIGIT+)? { RETURN_UPDATE(PN_TOK_FLOAT); }
+    SIGN? DIGIT+ "." ([eE] SIGN? DIGIT+)?        { RETURN_UPDATE(PN_TOK_FLOAT); }
+    SIGN? DIGIT* "." DIGIT+ ([eE] SIGN? DIGIT+)? { RETURN_UPDATE(PN_TOK_FLOAT); }
+    SIGN? DIGIT+ [eE] SIGN? DIGIT+               { RETURN_UPDATE(PN_TOK_FLOAT); }
 
     ALNUM+      { RETURN_UPDATE(PN_TOK_ID); }
 

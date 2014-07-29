@@ -43,7 +43,7 @@ binary(O) ::= BINARY(S) . { O = S; }
 string(O) ::= STRING(S) . { O = S; }
 id(O)     ::= ID(S) .     { O = S; }
 /* No need to fiddle with strings as the conversion will halt on the first non-numeric character anyway */
-int(O)    ::= INT(S) .    { O = strtoull(S.start, 0, 10); }
+int(O)    ::= INT(S) .    { O = strtoll(S.start, 0, 10); }
 uint(O)   ::= BINT(S) .   { O = strtoull(S.start, 0, 2); }
 uint(O)   ::= OINT(S) .   { O = strtoull(S.start, 0, 8); }
 uint(O)   ::= HINT(S) .   { O = strtoull(S.start, 0, 16); }
@@ -59,7 +59,7 @@ simple_value ::= int(I) .                { pn_data_put_long(data, I); }
 simple_value ::= uint(I) .               { pn_data_put_ulong(data, I); }
 simple_value ::= binary(S) .             { pn_data_put_binary(data, S); }
 simple_value ::= string(S) .             { pn_data_put_string(data, S); }
-simple_value ::= float(F) .              { pn_data_put_float(data, F); }
+simple_value ::= float(F) .              { pn_data_put_double(data, F); }
 simple_value ::= TRUE .                  { pn_data_put_bool(data, true); }
 simple_value ::= FALSE .                 { pn_data_put_bool(data, false); }
 simple_value ::= NULL .                  { pn_data_put_null(data); }
