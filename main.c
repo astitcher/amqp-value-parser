@@ -102,7 +102,6 @@ void process(pn_transport_t* transport, pn_collector_t* collector, pn_data_t* da
 
         send_frame(transport, collector, buffer, s);
         pump_collector(collector);
-        empty_output(transport);
     } else {
         printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
     }
@@ -126,7 +125,6 @@ int main(int argc, const char* argv[])
 
     send_frame(transport, collector, amqp10header, sizeof(amqp10header));
     pump_collector(collector);
-    empty_output(transport);
 
     pn_data_t* data = pn_data(16);
 
@@ -147,7 +145,6 @@ int main(int argc, const char* argv[])
         free(buffer);
     }
     pn_transport_close_tail(transport);
-    empty_output(transport);
 
     pn_data_free(data);
 
