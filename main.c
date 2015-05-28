@@ -1,5 +1,8 @@
 #include <proton/codec.h>
-#include <proton/engine.h>
+#include <proton/connection.h>
+#include <proton/event.h>
+#include <proton/transport.h>
+#include <proton/sasl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,6 +118,7 @@ int main(int argc, const char* argv[])
 {
     /* set up proton transport to receive data */
     pn_transport_t* transport = pn_transport();
+    pn_transport_set_server(transport);
     pn_connection_t* connection = pn_connection();
     pn_collector_t* collector = pn_collector();
 
