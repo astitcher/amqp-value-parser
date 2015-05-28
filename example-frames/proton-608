@@ -1,0 +1,1 @@
+@attach(18) [name="amq.topic_1", handle=00, role=false, snd-settle-mode=02, rcv-settle-mode=00, target=@target(41) [address="amq.topic"], null,null,incomplete-unsettled=false, initial-delivery-count=00]

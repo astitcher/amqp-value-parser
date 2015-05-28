@@ -1,0 +1,4 @@
+@begin(17) [null, next-outgoing-id=00, incoming-window=2147483647, outgoing-window=01]
+@attach(18) [name="sender-xxx", handle=00, role=false, snd-settle-mode=02, rcv-settle-mode=00, source=@source(40) [null, durable=00, null, timeout=00, dynamic=false], target=@target(41) [null, durable=00, null, timeout=00, dynamic=false], null, null, initial-delivery-count=00]
+@detach(22) [handle=00, closed=true]
+@close(24) []
