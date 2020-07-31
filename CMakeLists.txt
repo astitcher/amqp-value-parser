@@ -17,24 +17,17 @@
 # under the License.
 #
 
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
 project(amqp-value-parser)
 
-find_package(Proton 0.7 REQUIRED)
-
-include_directories (.)
-include_directories(${Proton_INCLUDE_DIRS})
+find_package(Proton 0.28 REQUIRED)
 
 add_compile_options(-Wall)
 
-add_custom_command (OUTPUT amqp-value.lemon
-                    DEPENDS ${CMAKE_SOURCE_DIR}/amqp-value.lemon
-                    COMMAND cp ${CMAKE_SOURCE_DIR}/amqp-value.lemon ${CMAKE_BINARY_DIR})
-
 add_custom_command (OUTPUT amqp-value.c amqp-value.h amqp-value.out
                     DEPENDS amqp-value.lemon amqp-performatives.c amqp-value.re.c
-                    COMMAND lemon amqp-value.lemon)
+                    COMMAND lemon -d${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/amqp-value.lemon)
 
 add_custom_command (OUTPUT amqp-performatives.c
                     DEPENDS performatives.gperf
@@ -46,9 +39,10 @@ add_custom_command (OUTPUT amqp-value.re.c
 
 add_library (amqp-value STATIC
              amqp-value.c)
+target_link_libraries (amqp-value Proton::core)
 
 add_executable (amqp-value-test main.c)
-target_link_libraries (amqp-value-test amqp-value ${Proton_LIBRARIES})
+target_link_libraries (amqp-value-test amqp-value Proton::core)
 
 install (TARGETS amqp-value-test
          RUNTIME DESTINATION "bin"
