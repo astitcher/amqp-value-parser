@@ -14,8 +14,8 @@ typedef struct {
     char*  bytes;
 } ByteRange;
 
-#define RETURN_UPDATE_NOTOK(x) do { input->bytes = p; input->size = e-p; return (x); } while (true)
-#define RETURN_UPDATE(x) do { tok->start = t; tok->size = p-t; input->bytes = p; input->size = e-p; return (x); } while (true)
+#define RETURN_UPDATE_NOTOK(x) do { input->bytes = p; input->size = e-p; return (x); } while (false)
+#define RETURN_UPDATE(x) do { tok->start = t; tok->size = p-t; input->bytes = p; input->size = e-p; return (x); } while (false)
 
 static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
 {
@@ -42,7 +42,7 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     SIGN   = [-+];
     STRING = ["]([^"]|"\\\"")*["];
 
-    /* Ignore whitespace */
+    // Ignore whitespace
     WS          { continue; }
 
     "("         { RETURN_UPDATE(PN_TOK_LPAREN); }
@@ -87,8 +87,7 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
 /* Process escape characters in string
  *
  * We modify the input string inline as we know that escape characters
- * can only make the string shorter and in the context of flex
- * yytext can be safely modified.
+ * can only make the string shorter
  *
  * Escapes that aren't understood are left as-is
  *
