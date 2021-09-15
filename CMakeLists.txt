@@ -44,6 +44,9 @@ target_link_libraries (amqp-value Proton::core)
 add_executable (amqp-value-test main.c)
 target_link_libraries (amqp-value-test amqp-value Proton::core)
 
+add_executable (frame-dump-tester frame_dump_tester.c)
+target_link_libraries (frame-dump-tester amqp-value Proton::core readline)
+
 install (TARGETS amqp-value-test
          RUNTIME DESTINATION "bin"
          LIBRARY DESTINATION "lib"
