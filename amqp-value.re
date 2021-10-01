@@ -56,9 +56,6 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     "="         { RETURN_UPDATE(PN_TOK_EQUAL); }
     "@"         { RETURN_UPDATE(PN_TOK_AT); }
     "=>"        { RETURN_UPDATE(PN_TOK_DARROW); }
-    "true"      { RETURN_UPDATE(PN_TOK_TRUE); }
-    "false"     { RETURN_UPDATE(PN_TOK_FALSE); }
-    "null"      { RETURN_UPDATE(PN_TOK_NULL); }
 
     "b" STRING  { tok->start = t+2;
                   tok->size = pni_process_string_escapes(p-t-3, t+2);

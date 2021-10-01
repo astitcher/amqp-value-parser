@@ -10,8 +10,21 @@
 
 #include "amqp-performatives.c"
 
+typedef struct {
+  bool initial_array_value;
+} parse_context;
+
+static inline void check_initial_array_value(pn_data_t* data, parse_context* context, pn_type_t type) {
+  if (!context->initial_array_value) return;
+
+  pn_data_put_array(data, false, type);
+  pn_data_enter(data);
+  context->initial_array_value = false;
 }
 
+}
+
+%extra_context { parse_context* context }
 %extra_argument { pn_data_t* data }
 
 %start_symbol start
@@ -20,6 +33,7 @@
 
 %type binary { pn_bytes_t }
 %type string { pn_bytes_t }
+%type symbol { pn_bytes_t }
 %type id     { pn_bytes_t }
 %type label  { pn_bytes_t }
 %type int    { int64_t }
@@ -27,6 +41,11 @@
 %type float  { double }
 %type descriptor_value { uint64_t }
 %type descriptor { uint64_t }
+
+%type value        { pn_type_t }
+%type simple_value { pn_type_t }
+%type array_value  { pn_type_t }
+%type array_list   { pn_type_t }
 
 %syntax_error {
     pn_data_clear(data);
@@ -52,37 +71,64 @@ float(O)  ::= FLOAT(S) .  { O = strtod(S.start, 0); }
 value ::= described_value .
 value ::= map .
 value ::= list .
+value ::= array .
 value ::= simple_value .
 
-simple_value ::= symbol .
-simple_value ::= int(I) .                { pn_data_put_long(data, I); }
-simple_value ::= uint(I) .               { pn_data_put_ulong(data, I); }
-simple_value ::= binary(S) .             { pn_data_put_binary(data, S); }
-simple_value ::= string(S) .             { pn_data_put_string(data, S); }
-simple_value ::= float(F) .              { pn_data_put_double(data, F); }
-simple_value ::= TRUE .                  { pn_data_put_bool(data, true); }
-simple_value ::= FALSE .                 { pn_data_put_bool(data, false); }
-simple_value ::= NULL .                  { pn_data_put_null(data); }
+array_value(T) ::= map .               { T = PN_MAP; }
+array_value(T) ::= list .              { T = PN_LIST; }
+array_value(TO) ::= simple_value(TI) . { TO = TI; }
 
+// Check whether an unadorned id is "true", "false", "null" otherwise treat as a symbol
+simple_value(T) ::= id(S) .      { if (strncmp("true", S.start, S.size)==0){
+                                     T = PN_BOOL;
+                                     check_initial_array_value(data, context, T);
+                                     pn_data_put_bool(data, true);
+                                   } else if (strncmp("false", S.start, S.size)==0) {
+                                     T = PN_BOOL;
+                                     check_initial_array_value(data, context, T);
+                                     pn_data_put_bool(data, false);
+                                   } else if (strncmp("null", S.start, S.size)==0) {
+                                     T = PN_NULL;
+                                     check_initial_array_value(data, context, T);
+                                     pn_data_put_null(data);
+                                   } else {
+                                     T = PN_SYMBOL;
+                                     check_initial_array_value(data, context, T);
+                                     pn_data_put_symbol(data, S);
+                                   }
+                                 }
+simple_value(T) ::= int(I) .     { T = PN_LONG; check_initial_array_value(data, context, T); pn_data_put_long(data, I); }
+simple_value(T) ::= uint(I) .    { T = PN_ULONG; check_initial_array_value(data, context, T); pn_data_put_ulong(data, I); }
+simple_value(T) ::= binary(S) .  { T = PN_BINARY; check_initial_array_value(data, context, T); pn_data_put_binary(data, S); }
+simple_value(T) ::= string(S) .  { T = PN_STRING; check_initial_array_value(data, context, T); pn_data_put_string(data, S); }
+simple_value(T) ::= float(F) .   { T = PN_DOUBLE; check_initial_array_value(data, context, T); pn_data_put_double(data, F); }
+simple_value(T) ::= symbol(S) .  { T = PN_SYMBOL; check_initial_array_value(data, context, T); pn_data_put_symbol(data, S);}
+
+label(O) ::= id(I) .                     { O = I; }
+
+descriptor_value(O) ::= label(I) .       { uint64_t d = pni_lookup_performative_value(I.start, I.size);
+                                           if (d) {
+                                            pn_data_put_ulong(data, d);
+                                           } else {
+                                            pn_data_put_symbol(data, I);
+                                           }
+                                           O = d; }
 descriptor_value(O) ::= symbol .         { O = 0; }
 descriptor_value(O) ::= int(I) .         { pn_data_put_ulong(data, I); O = I; }
 descriptor_value(O) ::= uint(I) .        { pn_data_put_ulong(data, I); O = I; }
-
-label(O) ::= id(I) .                     { O = I; }
 
 described_value_value ::= map .
 described_value_value ::= list .
 described_value_value ::= simple_value .
 
-descriptor(O) ::= descriptor_value(I) .  { O = I; }
-descriptor(O) ::= label(L) LPAREN descriptor_value(V) RPAREN .
-                                         { int d = pni_lookup_performative(L.start, L.size);
+descriptor ::= descriptor_value .
+descriptor ::= label(L) LPAREN descriptor_value(V) RPAREN .
+                                         { int d = pni_lookup_performative_value(L.start, L.size);
                                            if ( d && d!=V ) {
                                              pn_error_format(pn_data_error(data), PN_ERR,
                                                "Descriptor %.*s(%d) does not match value %d",
                                                L.size, L.start, d, V);
                                            }
-                                           O = V;
                                          }
 
 described_value_head ::= AT .            { pn_data_put_described(data); pn_data_enter(data); }
@@ -97,7 +143,7 @@ map_entry ::= map_key COLON value .
 map_list ::= map_entry .
 map_list ::= map_list COMMA map_entry .
 
-map_head ::= LBRACE .                    { pn_data_put_map(data); pn_data_enter(data); }
+map_head ::= LBRACE .                    { check_initial_array_value(data, context, PN_MAP); pn_data_put_map(data); pn_data_enter(data); }
 map ::= map_head RBRACE .                { pn_data_exit(data); }
 map ::= map_head map_list RBRACE .       { pn_data_exit(data); }
 
@@ -107,13 +153,25 @@ list_entry ::= label EQUAL value.
 list_list ::= list_entry .
 list_list ::= list_list COMMA list_entry .
 
-list_head ::= LBRACKET .                 { pn_data_put_list(data); pn_data_enter(data); }
+list_head ::= LBRACKET .                 { check_initial_array_value(data, context, PN_LIST); pn_data_put_list(data); pn_data_enter(data); }
 list ::= list_head RBRACKET .            { pn_data_exit(data); }
 list ::= list_head list_list RBRACKET .  { pn_data_exit(data); }
 
-symbol ::= COLON string(S) .             { pn_data_put_symbol(data, S); }
-symbol ::= COLON id(S) .                 { pn_data_put_symbol(data, S); }
-symbol ::= id(S) .                       { pn_data_put_symbol(data, S); }
+// Arrays need at least one element to specify the type
+array_list(O) ::= array_value(T) .                        { O = T; }
+array_list(O) ::= array_list(T1) COMMA array_value(T2) .  { if (T1==T2) O=T1;
+                                                            else {
+                                                              pn_error_format(pn_data_error(data), PN_ERR,
+                                                                "Array has mixed types");
+                                                            }
+                                                          }
+
+array_head ::= AT LBRACKET .                { context->initial_array_value=true; }
+array ::= array_head array_list RBRACKET .  { pn_data_exit(data); }
+
+
+symbol(O) ::= COLON string(S) .             { O = S; }
+symbol(O) ::= COLON id(S) .                 { O = S; }
 
 %code {
 #include "amqp-value.re.c"
@@ -132,12 +190,14 @@ int pn_data_parse(pn_data_t* data, size_t len, const char* s)
     int tok;
     pn_bytes_t tokValue;
 
-    void* parser = PnParserAlloc( malloc );
+    yyParser parser;
+    parse_context context = { .initial_array_value=0 };
+    PnParserInit( &parser, &context );
     while ((tok=pni_parser_scan(&in, &tokValue))) {
-        PnParser(parser, tok, tokValue, data);
+        PnParser(&parser, tok, tokValue, data);
     }
-    PnParser(parser, tok, tokValue, data);
-    PnParserFree(parser, free);
+    PnParser(&parser, tok, tokValue, data);
+    PnParserFinalize(&parser);
 
     free(ws);
     return pn_data_errno(data);
