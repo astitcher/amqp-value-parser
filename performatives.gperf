@@ -3,50 +3,50 @@
 %struct-type
 %readonly-tables
 %pic
+%define lookup-function-name pni_lookup_performative
 %{
 #include <stdint.h>
-#include <string.h>
 %}
-struct performative { uint16_t name; uint8_t value; uint8_t field_entry; };
+struct performative { int name; uint8_t value; uint8_t field_entry; };
 %%
-"open",        16, 1
-"begin",       17, 2
-"attach",      18, 3
-"flow",        19, 4
-"transfer",    20, 5
-"disposition", 21, 6
-"detach",      22, 7
-"end",         23, 8
-"close",       24, 9
-"error",       29, 10
-"received",    35, 11
-"accepted",    36, 12
-"rejected",    37, 13
-"released",    38, 14
-"modified",    39, 15
-"source",      40, 16
-"target",      41, 17
-"delete-on-close", 43, 18
-"delete-on-no-links", 44, 19
-"delete-on-no-messages", 45, 20
-"delete-on-no-links-or-messages", 46, 21
-"sasl-mechanisms", 64, 22
-"sasl-init",       65, 23
-"sasl-challenge",  66, 24
-"sasl-response",   67, 25
-"sasl-outcome",    68, 26
-"header",          112, 27
-"delivery-annotations", 113, 28
-"message-annotations", 114, 29
-"properties",      115, 30
-"application-properties", 116, 31
-"data",            117, 32
-"amqp-sequence",   118, 33
-"amqp-value",      119, 34
-"footer",          120, 35
+open,        16, 1
+begin,       17, 2
+attach,      18, 3
+flow,        19, 4
+transfer,    20, 5
+disposition, 21, 6
+detach,      22, 7
+end,         23, 8
+close,       24, 9
+error,       29, 10
+received,    35, 11
+accepted,    36, 12
+rejected,    37, 13
+released,    38, 14
+modified,    39, 15
+source,      40, 16
+target,      41, 17
+delete-on-close, 43, 18
+delete-on-no-links, 44, 19
+delete-on-no-messages, 45, 20
+delete-on-no-links-or-messages, 46, 21
+sasl-mechanisms, 64, 22
+sasl-init,       65, 23
+sasl-challenge,  66, 24
+sasl-response,   67, 25
+sasl-outcome,    68, 26
+header,          112, 27
+delivery-annotations, 113, 28
+message-annotations, 114, 29
+properties,      115, 30
+application-properties, 116, 31
+data,            117, 32
+amqp-sequence,   118, 33
+amqp-value,      119, 34
+footer,          120, 35
 %%
-static int pni_lookup_performative(const char* s, size_t len)
+static int pni_lookup_performative_value(const char* s, size_t len)
 {
-    const struct performative* p = in_word_set(s, len);
+    const struct performative* p = pni_lookup_performative(s, len);
     return p ? p->value : 0;
 }
