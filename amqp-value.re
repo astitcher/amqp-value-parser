@@ -51,6 +51,8 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     "}"         { RETURN_UPDATE(PN_TOK_RBRACE); }
     "["         { RETURN_UPDATE(PN_TOK_LBRACKET); }
     "]"         { RETURN_UPDATE(PN_TOK_RBRACKET); }
+    "<"         { RETURN_UPDATE(PN_TOK_LESS); }
+    ">"         { RETURN_UPDATE(PN_TOK_GREATER); }
     ":"         { RETURN_UPDATE(PN_TOK_COLON); }
     ","         { RETURN_UPDATE(PN_TOK_COMMA); }
     "="         { RETURN_UPDATE(PN_TOK_EQUAL); }

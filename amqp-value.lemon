@@ -4,22 +4,98 @@
 
 %include {
 #include <proton/codec.h>
+
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
+#include <string.h>
 
-#include "amqp-performatives.c"
+#include "amqp-performatives.h"
+#include "amqp-types.h"
+
+static inline int pni_lookup_performative_value(const char* s, size_t len)
+{
+    const struct performative* p = pni_lookup_performative(s, len);
+    return p ? p->value : 0;
+}
 
 typedef struct {
+  pn_type_t array_type;
+  bool in_array;
   bool initial_array_value;
 } parse_context;
 
-static inline void check_initial_array_value(pn_data_t* data, parse_context* context, pn_type_t type) {
-  if (!context->initial_array_value) return;
+static inline pn_type_t check_initial_array_value(pn_data_t* data, parse_context* context, pn_type_t type) {
+  if (!context->in_array) return type;
+
+  if (!context->initial_array_value) return context->array_type;
 
   pn_data_put_array(data, false, type);
   pn_data_enter(data);
   context->initial_array_value = false;
+  context->array_type = type;
+  return type;
+}
+
+void pn_data_convert_int64_t(pn_data_t * data, pn_type_t type, int64_t value) {
+  switch (type) {
+    case PN_BYTE:   pn_data_put_byte(data, value); break;
+    case PN_SHORT:  pn_data_put_short(data, value); break;
+    case PN_INT:    pn_data_put_int(data, value); break;
+    case PN_LONG:   pn_data_put_long(data, value); break;
+    case PN_UBYTE:  pn_data_put_ubyte(data, value); break;
+    case PN_USHORT: pn_data_put_ushort(data, value); break;
+    case PN_UINT:   pn_data_put_uint(data, value); break;
+    case PN_ULONG:  pn_data_put_ulong(data, value); break;
+    case PN_FLOAT:  pn_data_put_float(data, value); break;
+    case PN_DOUBLE: pn_data_put_double(data, value); break;
+    case PN_TIMESTAMP: pn_data_put_timestamp(data, value); break;
+    default:
+      pn_error_format(pn_data_error(data), PN_ERR,
+        "Cannot perform integer conversion");
+      break;
+  }
+}
+
+void pn_data_convert_uint64_t(pn_data_t * data, pn_type_t type, uint64_t value) {
+  switch (type) {
+    case PN_BYTE:   pn_data_put_byte(data, value); break;
+    case PN_SHORT:  pn_data_put_short(data, value); break;
+    case PN_INT:    pn_data_put_int(data, value); break;
+    case PN_LONG:   pn_data_put_long(data, value); break;
+    case PN_UBYTE:  pn_data_put_ubyte(data, value); break;
+    case PN_USHORT: pn_data_put_ushort(data, value); break;
+    case PN_UINT:   pn_data_put_uint(data, value); break;
+    case PN_ULONG:  pn_data_put_ulong(data, value); break;
+    case PN_FLOAT:  pn_data_put_float(data, value); break;
+    case PN_DOUBLE: pn_data_put_double(data, value); break;
+    case PN_TIMESTAMP: pn_data_put_timestamp(data, value); break;
+    default:
+      pn_error_format(pn_data_error(data), PN_ERR,
+        "Cannot perform unsigned conversion");
+      break;
+  }
+}
+
+void pn_data_convert_double(pn_data_t * data, pn_type_t type, double value) {
+  switch (type) {
+    case PN_BYTE:   pn_data_put_byte(data, value); break;
+    case PN_SHORT:  pn_data_put_short(data, value); break;
+    case PN_INT:    pn_data_put_int(data, value); break;
+    case PN_LONG:   pn_data_put_long(data, value); break;
+    case PN_UBYTE:  pn_data_put_ubyte(data, value); break;
+    case PN_USHORT: pn_data_put_ushort(data, value); break;
+    case PN_UINT:   pn_data_put_uint(data, value); break;
+    case PN_ULONG:  pn_data_put_ulong(data, value); break;
+    case PN_FLOAT:  pn_data_put_float(data, value); break;
+    case PN_DOUBLE: pn_data_put_double(data, value); break;
+    case PN_TIMESTAMP: pn_data_put_timestamp(data, value); break;
+    default:
+      pn_error_format(pn_data_error(data), PN_ERR,
+        "Cannot perform float conversion");
+      break;
+  }
 }
 
 }
@@ -35,17 +111,20 @@ static inline void check_initial_array_value(pn_data_t* data, parse_context* con
 %type string { pn_bytes_t }
 %type symbol { pn_bytes_t }
 %type id     { pn_bytes_t }
-%type label  { pn_bytes_t }
 %type int    { int64_t }
 %type uint   { uint64_t }
 %type float  { double }
-%type descriptor_value { uint64_t }
-%type descriptor { uint64_t }
+%type descriptor_ulong { uint64_t }
+%type descriptor_label { pn_bytes_t }
 
+%type type         { pn_type_t }
 %type value        { pn_type_t }
+%type tvalue       { pn_type_t }
 %type simple_value { pn_type_t }
 %type array_value  { pn_type_t }
 %type array_list   { pn_type_t }
+
+%type array_head_typed { pn_type_t }
 
 %syntax_error {
     pn_data_clear(data);
@@ -74,6 +153,20 @@ value ::= list .
 value ::= array .
 value ::= simple_value .
 
+// integers with explicit types
+tvalue(TO) ::= type(TI) LPAREN int(I) RPAREN .  { check_initial_array_value(data, context, TI);
+                                                  pn_data_convert_int64_t(data, TI, I);
+                                                  TO = TI;
+                                                }
+tvalue(TO) ::= type(TI) LPAREN uint(I) RPAREN . { check_initial_array_value(data, context, TI);
+                                                  pn_data_convert_uint64_t(data, TI, I);
+                                                  TO = TI;
+                                                }
+tvalue(TO) ::= type(TI) LPAREN float(I) RPAREN . { check_initial_array_value(data, context, TI);
+                                                   pn_data_convert_double(data, TI, I);
+                                                   TO = TI;
+                                                 }
+
 array_value(T) ::= map .               { T = PN_MAP; }
 array_value(T) ::= list .              { T = PN_LIST; }
 array_value(TO) ::= simple_value(TI) . { TO = TI; }
@@ -97,39 +190,41 @@ simple_value(T) ::= id(S) .      { if (strncmp("true", S.start, S.size)==0){
                                      pn_data_put_symbol(data, S);
                                    }
                                  }
-simple_value(T) ::= int(I) .     { T = PN_LONG; check_initial_array_value(data, context, T); pn_data_put_long(data, I); }
-simple_value(T) ::= uint(I) .    { T = PN_ULONG; check_initial_array_value(data, context, T); pn_data_put_ulong(data, I); }
+simple_value(T) ::= tvalue(I) .  { T = I; }
+simple_value(T) ::= int(I) .     { T = check_initial_array_value(data, context, PN_LONG); pn_data_convert_int64_t(data, T, I); }
+simple_value(T) ::= uint(I) .    { T = check_initial_array_value(data, context, PN_ULONG); pn_data_convert_uint64_t(data, T, I); }
+simple_value(T) ::= float(F) .   { T = check_initial_array_value(data, context, PN_DOUBLE); pn_data_convert_double(data, T, F); }
 simple_value(T) ::= binary(S) .  { T = PN_BINARY; check_initial_array_value(data, context, T); pn_data_put_binary(data, S); }
 simple_value(T) ::= string(S) .  { T = PN_STRING; check_initial_array_value(data, context, T); pn_data_put_string(data, S); }
-simple_value(T) ::= float(F) .   { T = PN_DOUBLE; check_initial_array_value(data, context, T); pn_data_put_double(data, F); }
 simple_value(T) ::= symbol(S) .  { T = PN_SYMBOL; check_initial_array_value(data, context, T); pn_data_put_symbol(data, S);}
 
-label(O) ::= id(I) .                     { O = I; }
+descriptor_label ::= id(I) .       { uint64_t d = pni_lookup_performative_value(I.start, I.size);
+                                     if (d) {
+                                       pn_data_put_ulong(data, d);
+                                     } else {
+                                       pn_data_put_symbol(data, I);
+                                     }
+                                   }
+descriptor_ulong(O) ::= int(I) .   { pn_data_put_ulong(data, I); O = I; }
+descriptor_ulong(O) ::= uint(I) .  { pn_data_put_ulong(data, I); O = I; }
 
-descriptor_value(O) ::= label(I) .       { uint64_t d = pni_lookup_performative_value(I.start, I.size);
-                                           if (d) {
-                                            pn_data_put_ulong(data, d);
-                                           } else {
-                                            pn_data_put_symbol(data, I);
-                                           }
-                                           O = d; }
-descriptor_value(O) ::= symbol .         { O = 0; }
-descriptor_value(O) ::= int(I) .         { pn_data_put_ulong(data, I); O = I; }
-descriptor_value(O) ::= uint(I) .        { pn_data_put_ulong(data, I); O = I; }
+descriptor_value ::= symbol(I) .   { pn_data_put_symbol(data, I); }
+descriptor_value ::= descriptor_label .
+descriptor_value ::= descriptor_ulong .
 
 described_value_value ::= map .
 described_value_value ::= list .
 described_value_value ::= simple_value .
 
 descriptor ::= descriptor_value .
-descriptor ::= label(L) LPAREN descriptor_value(V) RPAREN .
-                                         { int d = pni_lookup_performative_value(L.start, L.size);
-                                           if ( d && d!=V ) {
-                                             pn_error_format(pn_data_error(data), PN_ERR,
-                                               "Descriptor %.*s(%d) does not match value %d",
-                                               L.size, L.start, d, V);
-                                           }
-                                         }
+descriptor ::= id(L) LPAREN descriptor_ulong(V) RPAREN .
+                                   { int d = pni_lookup_performative_value(L.start, L.size);
+                                     if ( d && d!=V ) {
+                                       pn_error_format(pn_data_error(data), PN_ERR,
+                                         "Descriptor %.*s(%d) does not match value %d",
+                                         L.size, L.start, d, V);
+                                     }
+                                   }
 
 described_value_head ::= AT .            { pn_data_put_described(data); pn_data_enter(data); }
 described_value ::= described_value_head descriptor described_value_value . { pn_data_exit(data); }
@@ -148,7 +243,7 @@ map ::= map_head RBRACE .                { pn_data_exit(data); }
 map ::= map_head map_list RBRACE .       { pn_data_exit(data); }
 
 list_entry ::= value .
-list_entry ::= label EQUAL value.
+list_entry ::= id EQUAL value.
 
 list_list ::= list_entry .
 list_list ::= list_list COMMA list_entry .
@@ -157,21 +252,41 @@ list_head ::= LBRACKET .                 { check_initial_array_value(data, conte
 list ::= list_head RBRACKET .            { pn_data_exit(data); }
 list ::= list_head list_list RBRACKET .  { pn_data_exit(data); }
 
-// Arrays need at least one element to specify the type
-array_list(O) ::= array_value(T) .                        { O = T; }
-array_list(O) ::= array_list(T1) COMMA array_value(T2) .  { if (T1==T2) O=T1;
-                                                            else {
+// Arrays with no type need at least one element to specify it
+array_list(O) ::= array_value(T) .                       { O = T; }
+array_list(O) ::= array_list(T1) COMMA array_value(T2) . { if (T1==T2) O=T1;
+                                                           else {
+                                                             pn_error_format(pn_data_error(data), PN_ERR,
+                                                               "Array has mixed types");
+                                                           }
+                                                         }
+
+array_head ::= AT LBRACKET .                                 { context->in_array = true; context->initial_array_value = true; }
+array_head_typed(TO) ::= AT LESS type(TI) GREATER LBRACKET . { context->in_array = true;
+                                                               context->initial_array_value = false;
+                                                               context->array_type = TI;
+                                                               pn_data_put_array(data, false, TI); pn_data_enter(data); TO = TI; }
+
+array ::= array_head array_list RBRACKET .               { context->in_array = false; pn_data_exit(data); }
+array ::= array_head_typed(T1) array_list(T2) RBRACKET . { if (T1!=T2) {
                                                               pn_error_format(pn_data_error(data), PN_ERR,
-                                                                "Array has mixed types");
+                                                                "Array elements have wrong type");
                                                             }
-                                                          }
-
-array_head ::= AT LBRACKET .                { context->initial_array_value=true; }
-array ::= array_head array_list RBRACKET .  { pn_data_exit(data); }
-
+                                                            context->in_array = false;
+                                                            pn_data_exit(data);
+                                                         }
+array ::= array_head_typed RBRACKET .                    {  context->in_array = false; pn_data_exit(data); }
 
 symbol(O) ::= COLON string(S) .             { O = S; }
 symbol(O) ::= COLON id(S) .                 { O = S; }
+
+type(T) ::= id(I) . { const struct type* t = pni_lookup_typename(I.start, I.size);
+                      if (t) T = t->type;
+                      else {
+                        pn_error_format(pn_data_error(data), PN_ERR,
+                          "Unknown typename %.*s", I.size, I.start);
+                      }
+                    }
 
 %code {
 #include "amqp-value.re.c"
@@ -191,7 +306,7 @@ int pn_data_parse(pn_data_t* data, size_t len, const char* s)
     pn_bytes_t tokValue;
 
     yyParser parser;
-    parse_context context = { .initial_array_value=0 };
+    parse_context context = { .in_array=false };
     PnParserInit( &parser, &context );
     while ((tok=pni_parser_scan(&in, &tokValue))) {
         PnParser(&parser, tok, tokValue, data);
@@ -207,4 +322,5 @@ int pn_data_parse_string(pn_data_t* data, const char* s)
 {
     return pn_data_parse(data, strlen(s), s);
 }
+
 }

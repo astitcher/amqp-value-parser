@@ -1,0 +1,39 @@
+%language=ANSI-C
+%compare-strncmp
+%struct-type
+%readonly-tables
+%pic
+%define lookup-function-name pni_lookup_typename
+%define string-pool-name typename_stringpool
+%define hash-function-name typename_hash
+%define constants-prefix TYPENAME_
+%{
+#include <proton/codec.h>
+#include <stdint.h>
+%}
+struct type {int name; pn_type_t type;};
+%%
+null,      PN_NULL
+bool,      PN_BOOL
+ubyte,     PN_UBYTE
+byte,      PN_BYTE
+ushort,    PN_USHORT
+short,     PN_SHORT
+uint,      PN_UINT
+int,       PN_INT
+ulong,     PN_ULONG
+long,      PN_LONG
+char,      PN_CHAR
+timestamp, PN_TIMESTAMP
+float,     PN_FLOAT
+double,    PN_DOUBLE
+decimal32, PN_DECIMAL32
+decimal64, PN_DECIMAL64
+decimal128,PN_DECIMAL128
+uuid,      PN_UUID
+binary,    PN_BINARY
+string,    PN_STRING
+symbol,    PN_SYMBOL
+list,      PN_LIST
+map,       PN_MAP
+%%

@@ -4,6 +4,9 @@
 %readonly-tables
 %pic
 %define lookup-function-name pni_lookup_performative
+%define string-pool-name performative_stringpool
+%define hash-function-name performative_hash
+%define constants-prefix PERFORMATIVE_
 %{
 #include <stdint.h>
 %}
@@ -45,8 +48,3 @@ amqp-sequence,   118, 33
 amqp-value,      119, 34
 footer,          120, 35
 %%
-static int pni_lookup_performative_value(const char* s, size_t len)
-{
-    const struct performative* p = pni_lookup_performative(s, len);
-    return p ? p->value : 0;
-}

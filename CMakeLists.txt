@@ -26,12 +26,16 @@ find_package(Proton 0.28 REQUIRED)
 add_compile_options(-Wall)
 
 add_custom_command (OUTPUT amqp-value.c amqp-value.h amqp-value.out
-                    DEPENDS amqp-value.lemon amqp-performatives.c amqp-value.re.c
+                    DEPENDS amqp-value.lemon amqp-performatives.h amqp-types.h amqp-value.re.c
                     COMMAND lemon -d${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/amqp-value.lemon)
 
-add_custom_command (OUTPUT amqp-performatives.c
+add_custom_command (OUTPUT amqp-performatives.h
                     DEPENDS performatives.gperf
-                    COMMAND gperf --output-file amqp-performatives.c ${CMAKE_SOURCE_DIR}/performatives.gperf)
+                    COMMAND gperf --output-file amqp-performatives.h ${CMAKE_SOURCE_DIR}/performatives.gperf)
+
+add_custom_command (OUTPUT amqp-types.h
+                    DEPENDS types.gperf
+                    COMMAND gperf --output-file amqp-types.h ${CMAKE_SOURCE_DIR}/types.gperf)
 
 add_custom_command (OUTPUT amqp-value.re.c
                     DEPENDS amqp-value.re
@@ -40,6 +44,7 @@ add_custom_command (OUTPUT amqp-value.re.c
 add_library (amqp-value STATIC
              amqp-value.c)
 target_link_libraries (amqp-value Proton::core)
+target_include_directories(amqp-value PRIVATE ${CMAKE_SOURCE_DIR})
 
 add_executable (amqp-value-test main.c)
 target_link_libraries (amqp-value-test amqp-value Proton::core)
