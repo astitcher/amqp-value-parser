@@ -14,12 +14,6 @@
 #include "amqp-performatives.h"
 #include "amqp-types.h"
 
-static inline int pni_lookup_performative_value(const char* s, size_t len)
-{
-    const struct performative* p = pni_lookup_performative(s, len);
-    return p ? p->value : 0;
-}
-
 typedef struct {
   pn_type_t array_type;
   bool in_array;
@@ -198,9 +192,9 @@ simple_value(T) ::= binary(S) .  { T = PN_BINARY; check_initial_array_value(data
 simple_value(T) ::= string(S) .  { T = PN_STRING; check_initial_array_value(data, context, T); pn_data_put_string(data, S); }
 simple_value(T) ::= symbol(S) .  { T = PN_SYMBOL; check_initial_array_value(data, context, T); pn_data_put_symbol(data, S);}
 
-descriptor_label ::= id(I) .       { uint64_t d = pni_lookup_performative_value(I.start, I.size);
-                                     if (d) {
-                                       pn_data_put_ulong(data, d);
+descriptor_label ::= id(I) .       { const struct performative* p = pni_lookup_performative(I.start, I.size);
+                                     if (p) {
+                                       pn_data_put_ulong(data, p->value);
                                      } else {
                                        pn_data_put_symbol(data, I);
                                      }
@@ -218,11 +212,15 @@ described_value_value ::= simple_value .
 
 descriptor ::= descriptor_value .
 descriptor ::= id(L) LPAREN descriptor_ulong(V) RPAREN .
-                                   { int d = pni_lookup_performative_value(L.start, L.size);
-                                     if ( d && d!=V ) {
+                                   { const struct performative* p = pni_lookup_performative(L.start, L.size);
+                                     if (!p) {
+                                       pn_error_format(pn_data_error(data), PN_ERR,
+                                         "Unknown descriptor %.*s does not match value %d",
+                                         L.size, L.start, V);
+                                     } else if ( p->value!=V ) {
                                        pn_error_format(pn_data_error(data), PN_ERR,
                                          "Descriptor %.*s(%d) does not match value %d",
-                                         L.size, L.start, d, V);
+                                         L.size, L.start, p->value, V);
                                      }
                                    }
 
@@ -302,16 +300,17 @@ int pn_data_parse(pn_data_t* data, size_t len, const char* s)
     ws[len] = 0;
     ByteRange in = { len, ws };
 
-    int tok;
-    pn_bytes_t tokValue;
-
     yyParser parser;
     parse_context context = { .in_array=false };
     PnParserInit( &parser, &context );
-    while ((tok=pni_parser_scan(&in, &tokValue))) {
+
+    int tok;
+    do {
+        pn_bytes_t tokValue;
+        tok = pni_parser_scan(&in, &tokValue);
         PnParser(&parser, tok, tokValue, data);
-    }
-    PnParser(&parser, tok, tokValue, data);
+    } while (tok);
+
     PnParserFinalize(&parser);
 
     free(ws);
