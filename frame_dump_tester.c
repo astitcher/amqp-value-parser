@@ -8,7 +8,7 @@
 
 extern int pn_data_parse(pn_data_t* data, size_t len, const char* s);
 extern int pn_data_parse_string(pn_data_t* data, const char* s);
-extern void pn_frame_dump_value(pn_bytes_t frame, pn_string_t *output);
+extern void pn_value_dump(pn_bytes_t frame, pn_string_t *output);
 
 void hexdump(size_t size, const char* buffer)
 {
@@ -36,7 +36,7 @@ void process(pn_data_t* data, const char* str)
         hexdump(s, buffer);
 
         pn_string_t* out = pn_string("");
-        pn_frame_dump_value((pn_bytes_t){.size=s,.start=buffer}, out);
+        pn_value_dump((pn_bytes_t){.size=s,.start=buffer}, out);
         printf("%s\n", pn_string_get(out));
     } else {
         printf("Failed: %s\n", pn_error_text(pn_data_error(data)));
