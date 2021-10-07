@@ -79,8 +79,8 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
 
     ALNUM+      { RETURN_UPDATE(PN_TOK_ID); }
 
-    [^]         { RETURN_UPDATE(-1); }
-    $           { RETURN_UPDATE(-1); }
+    [^]         { return(-1); }
+    $           { return(-1); }
     */
     }
     RETURN_UPDATE(0);
