@@ -308,6 +308,12 @@ int pn_data_parse(pn_data_t* data, size_t len, const char* s)
     do {
         pn_bytes_t tokValue;
         tok = pni_parser_scan(&in, &tokValue);
+        // Did we fail to lex?
+        if (tok==-1) {
+          pn_error_format(pn_data_error(data), PN_ERR,
+                          "Unable to process \"%.*s\"", in.size, in.bytes);
+          break;
+        }
         PnParser(&parser, tok, tokValue, data);
     } while (tok);
 

@@ -30,7 +30,9 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     re2c:define:YYCTYPE  = "char";
     re2c:define:YYCURSOR = p;
     re2c:define:YYMARKER = m;
+    re2c:define:YYLIMIT = e;
     re2c:yyfill:enable = 0;
+    re2c:eof = 0;
 
     WS     = [ \f\r\t\v\n];
     DIGIT  = [0-9];
@@ -40,7 +42,7 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     HDIGIT = [0-9a-fA-F];
     ALNUM  = [-a-zA-Z0-9];
     SIGN   = [-+];
-    STRING = ["]([^"]|"\\\"")*["];
+    STRING = ["] ([^"] | [\\]["])* ["];
 
     // Ignore whitespace
     WS          { continue; }
@@ -78,6 +80,7 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
     ALNUM+      { RETURN_UPDATE(PN_TOK_ID); }
 
     [^]         { RETURN_UPDATE(-1); }
+    $           { RETURN_UPDATE(-1); }
     */
     }
     RETURN_UPDATE(0);
