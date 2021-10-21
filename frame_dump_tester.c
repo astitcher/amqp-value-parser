@@ -83,10 +83,16 @@ void process(pn_data_t* data, const char* str)
     printf("Encoded: %zd bytes:\n", s);
     hexdump(s, buffer);
 
-    pn_string_t* out = pn_string("");
-    size_t ds = pn_value_dump((pn_bytes_t){.size=s,.start=buffer}, out);
-    printf("%s\n", pn_string_get(out));
-    printf("(Decoded %zd bytes)\n", ds);
+    pn_bytes_t bytes = {.size=s,.start=buffer};
+    while (bytes.size>0) {
+      pn_string_t* out = pn_string("");
+      size_t ds = pn_value_dump(bytes, out);
+      printf("%s\n", pn_string_get(out));
+      printf("(Decoded %zd bytes)\n", ds);
+
+      bytes.size  -= ds;
+      bytes.start += ds;
+    }
 }
 
 int main(int argc, const char* argv[])
