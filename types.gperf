@@ -31,6 +31,10 @@ decimal32, PN_DECIMAL32
 decimal64, PN_DECIMAL64
 decimal128,PN_DECIMAL128
 uuid,      PN_UUID
+D32,       PN_DECIMAL32
+D64,       PN_DECIMAL64
+D128,      PN_DECIMAL128
+UUID,      PN_UUID
 binary,    PN_BINARY
 string,    PN_STRING
 symbol,    PN_SYMBOL

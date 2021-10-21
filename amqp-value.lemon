@@ -34,6 +34,7 @@ static inline pn_type_t check_initial_array_value(pn_data_t* data, parse_context
 
 void pn_data_convert_int64_t(pn_data_t * data, pn_type_t type, int64_t value) {
   switch (type) {
+    case PN_INVALID: return;
     case PN_BYTE:   pn_data_put_byte(data, value); break;
     case PN_SHORT:  pn_data_put_short(data, value); break;
     case PN_INT:    pn_data_put_int(data, value); break;
@@ -54,6 +55,7 @@ void pn_data_convert_int64_t(pn_data_t * data, pn_type_t type, int64_t value) {
 
 void pn_data_convert_uint64_t(pn_data_t * data, pn_type_t type, uint64_t value) {
   switch (type) {
+    case PN_INVALID: return;
     case PN_BYTE:   pn_data_put_byte(data, value); break;
     case PN_SHORT:  pn_data_put_short(data, value); break;
     case PN_INT:    pn_data_put_int(data, value); break;
@@ -65,6 +67,8 @@ void pn_data_convert_uint64_t(pn_data_t * data, pn_type_t type, uint64_t value) 
     case PN_FLOAT:  pn_data_put_float(data, value); break;
     case PN_DOUBLE: pn_data_put_double(data, value); break;
     case PN_TIMESTAMP: pn_data_put_timestamp(data, value); break;
+    case PN_DECIMAL32: pn_data_put_decimal32(data, value); break;
+    case PN_DECIMAL64: pn_data_put_decimal64(data, value); break;
     default:
       pn_error_format(pn_data_error(data), PN_ERR,
         "Cannot perform unsigned conversion");
@@ -74,6 +78,7 @@ void pn_data_convert_uint64_t(pn_data_t * data, pn_type_t type, uint64_t value) 
 
 void pn_data_convert_double(pn_data_t * data, pn_type_t type, double value) {
   switch (type) {
+    case PN_INVALID: return;
     case PN_BYTE:   pn_data_put_byte(data, value); break;
     case PN_SHORT:  pn_data_put_short(data, value); break;
     case PN_INT:    pn_data_put_int(data, value); break;
@@ -92,6 +97,66 @@ void pn_data_convert_double(pn_data_t * data, pn_type_t type, double value) {
   }
 }
 
+bool hexconvert(pn_data_t * data, pn_bytes_t bytes, char* out, uint8_t out_size) {
+  int8_t s = 0;
+  char hex[3] = {0,0,0};
+  uint8_t hc = 0;
+  for (uint8_t i = 0; s<out_size && i<bytes.size; ++i) {
+    const char c = bytes.start[i];
+    // Little hack to allow hex to start with numeric if prefixed by any of 'XxHh'
+    if (i==0 && strchr("xXhX", c)) continue;
+    if (isspace(c) || c=='-') continue;
+    if (!isxdigit(c)) {
+      pn_error_format(pn_data_error(data), PN_ERR,
+        "Illegal hex character: %c\n", c);
+      return false;
+    }
+    hex[hc++] = c;
+    if (hc==2) {
+      out[s++] = strtoul(hex, NULL, 16);
+      hc = 0;
+    }
+  }
+  return true;
+}
+
+void pn_data_convert_id(pn_data_t * data, pn_type_t type, pn_bytes_t id) {
+  switch (type) {
+    case PN_INVALID: return;
+    case PN_DECIMAL32: {
+      pn_decimal32_t v = 0;
+      if (hexconvert(data, id, &v, 4)) {
+        pn_data_put_decimal32(data, v);
+      }
+      break;
+    }
+    case PN_DECIMAL64: {
+      pn_decimal64_t v = 0;
+      if (hexconvert(data, id, &v, 8)) {
+        pn_data_put_decimal64(data, v);
+      }
+      break;
+    }
+    case PN_DECIMAL128: {
+      pn_decimal128_t v = {0};
+      if (hexconvert(data, id, v.bytes, 16)) {
+        pn_data_put_decimal128(data, v);
+      }
+      break;
+    }
+    case PN_UUID: {
+      pn_uuid_t uuid = {0};
+      if (hexconvert(data, id, uuid.bytes, 16)) {
+        pn_data_put_uuid(data, uuid);
+      }
+      break;
+    }
+    default:
+      pn_error_format(pn_data_error(data), PN_ERR,
+        "Cannot perform id conversion");
+      break;
+  }
+}
 }
 
 %extra_context { parse_context* context }
@@ -147,7 +212,7 @@ value ::= list .
 value ::= array .
 value ::= simple_value .
 
-// integers with explicit types
+// number values with explicit types
 tvalue(TO) ::= type(TI) LPAREN int(I) RPAREN .  { check_initial_array_value(data, context, TI);
                                                   pn_data_convert_int64_t(data, TI, I);
                                                   TO = TI;
@@ -160,6 +225,12 @@ tvalue(TO) ::= type(TI) LPAREN float(I) RPAREN . { check_initial_array_value(dat
                                                    pn_data_convert_double(data, TI, I);
                                                    TO = TI;
                                                  }
+
+// Catchall for types direct from id (unquoted non-numeric)
+tvalue(TO) ::= type(TI) LPAREN id(I) RPAREN . { check_initial_array_value(data, context, TI);
+                                                pn_data_convert_id(data, TI, I);
+                                                TO = TI;
+                                              }
 
 array_value(T) ::= map .               { T = PN_MAP; }
 array_value(T) ::= list .              { T = PN_LIST; }
@@ -283,6 +354,7 @@ type(T) ::= id(I) . { const struct type* t = pni_lookup_typename(I.start, I.size
                       else {
                         pn_error_format(pn_data_error(data), PN_ERR,
                           "Unknown typename %.*s", I.size, I.start);
+                        T = PN_INVALID;
                       }
                     }
 
