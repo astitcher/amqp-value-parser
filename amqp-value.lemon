@@ -6,6 +6,7 @@
 #include <proton/codec.h>
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,14 +126,14 @@ void pn_data_convert_id(pn_data_t * data, pn_type_t type, pn_bytes_t id) {
     case PN_INVALID: return;
     case PN_DECIMAL32: {
       pn_decimal32_t v = 0;
-      if (hexconvert(data, id, &v, 4)) {
+      if (hexconvert(data, id, (char*)&v, 4)) {
         pn_data_put_decimal32(data, v);
       }
       break;
     }
     case PN_DECIMAL64: {
       pn_decimal64_t v = 0;
-      if (hexconvert(data, id, &v, 8)) {
+      if (hexconvert(data, id, (char*)&v, 8)) {
         pn_data_put_decimal64(data, v);
       }
       break;
@@ -189,6 +190,12 @@ void pn_data_convert_id(pn_data_t * data, pn_type_t type, pn_bytes_t id) {
     pn_data_clear(data);
     pn_error_format(pn_data_error(data), PN_ERR,
         "Syntax error near \"%.*s\"\n", (int)TOKEN.size, TOKEN.start);
+}
+
+// Avoid annoying unused variable warnings
+%token_destructor {
+  (void) context;
+  (void) data;
 }
 
 start ::= value .
