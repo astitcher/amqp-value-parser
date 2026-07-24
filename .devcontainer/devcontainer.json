@@ -1,0 +1,14 @@
+{
+  "name": "amqp-value-parser",
+  "image": "mcr.microsoft.com/devcontainers/base:fedora",
+  "features": {},
+  "postCreateCommand": "sudo dnf install -y @development-tools cmake ninja-build pkgconfig re2c gperf lemon readline-devel qpid-proton-c-devel && cmake -S . -B build && cmake --build build -j2",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools"
+      ]
+    }
+  }
+}
