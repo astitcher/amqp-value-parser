@@ -104,7 +104,7 @@ bool hexconvert(pn_data_t * data, pn_bytes_t bytes, char* out, uint8_t out_size)
   for (uint8_t i = 0; s<out_size && i<bytes.size; ++i) {
     const char c = bytes.start[i];
     // Little hack to allow hex to start with numeric if prefixed by any of 'XxHh'
-    if (i==0 && strchr("xXhX", c)) continue;
+    if (i==0 && strchr("xXhH", c)) continue;
     if (isspace(c) || c=='-') continue;
     if (!isxdigit(c)) {
       pn_error_format(pn_data_error(data), PN_ERR,

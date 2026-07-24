@@ -1,3 +1,4 @@
+// re2c --lang c
 #include <proton/codec.h>
 
 #include "amqp-value.h"
@@ -97,86 +98,40 @@ static int pni_parser_scan(ByteRange* input, pn_bytes_t* tok)
  */
 static int pni_process_string_escapes(size_t size, char* s)
 {
-    int count = 0;
-    int value = 0;
-    enum { REG, OCT, HEX } state = REG;
+    char* p = s;
+    char* e = s+size;
+    char* d = s;
+    char* m;
+    char* start;
 
-    char* src = s;
-    char* dst = s;
-    char* end = s+size;
+    while (p < e) {
+        start = p;
+    /*!re2c
+    re2c:define:YYCTYPE  = "char";
+    re2c:define:YYCURSOR = p;
+    re2c:define:YYMARKER = m;
+    re2c:define:YYLIMIT = e;
+    re2c:yyfill:enable = 0;
+    re2c:eof = 0;
 
-    for ( ; src<end; ++src) {
-        switch (state) {
-        case REG:
-            if ( *src=='\\' && end-src>=2 ) {
-                ++src;
-                switch (*src) {
-                default:
-                    --src;
-                case '\\': case '\"': case '\'':
-                    break;
-                case 'a': *dst++ = '\a'; continue;
-                case 'b': *dst++ = '\b'; continue;
-                case 'f': *dst++ = '\f'; continue;
-                case 'n': *dst++ = '\n'; continue;
-                case 'r': *dst++ = '\r'; continue;
-                case 't': *dst++ = '\t'; continue;
-                case 'v': *dst++ = '\v'; continue;
-                case 'x':
-                    value = 0;
-                    count = 0;
-                    state = HEX;
-                    continue;
-                case '0': case '1': case '2': case '3':
-                case '4': case '5': case '6': case '7':
-                    value = *src - '0';
-                    count = 1;
-                    state = OCT;
-                    continue;
-                }
-            }
-            *dst++ = *src;
-            break;
-        case OCT:
-            if ( *src>='0' && *src<='7' && count<3 ) {
-                value *= 8;
-                value += *src-'0';
-                ++count;
-            } else {
-                *dst++ = value;
-                state = REG;
-                --src;
-            }
-            break;
-        case HEX:
-            if ( isxdigit(*src) && count<2 ) {
-                value *= 16;
-                value += isdigit(*src) ? *src-'0' : toupper(*src)-'A'+10;
-                ++count;
-            } else if ( count>0 ) {
-                *dst++ = value;
-                state = REG;
-                --src;
-            } else {
-                *dst++ = '\\';
-                *dst++ = 'x';
-                state = REG;
-                --src;
-            }
-            break;
-         }
+    OCT = [0-7];
+    HEX = [0-9a-fA-F];
+
+    "\\\\"          { *d++ = '\\'; continue; }
+    "\\\""          { *d++ = '"';  continue; }
+    "\\'"           { *d++ = '\''; continue; }
+    "\\a"           { *d++ = '\a'; continue; }
+    "\\b"           { *d++ = '\b'; continue; }
+    "\\f"           { *d++ = '\f'; continue; }
+    "\\n"           { *d++ = '\n'; continue; }
+    "\\r"           { *d++ = '\r'; continue; }
+    "\\t"           { *d++ = '\t'; continue; }
+    "\\v"           { *d++ = '\v'; continue; }
+    "\\x" HEX HEX?  { unsigned int value = 0; char* q; for (q = start+2; q < p; ++q) value = value*16 + (isdigit(*q) ? *q-'0' : toupper(*q)-'A'+10); *d++ = (char)value; continue; }
+    "\\" OCT {1,3}  { unsigned int value = 0; char* q; for (q = start+1; q < p; ++q) value = value*8 + (*q - '0'); *d++ = (char)value; continue; }
+    [^]             { *d++ = *start; continue; }
+    $               { break; }
+    */
     }
-    switch (state) {
-    case HEX:
-        if ( count==0 ) {
-            *dst++ = '\\';
-            *dst++ = 'x';
-            break;
-        }
-    case OCT:
-        *dst++ = value;
-    case REG:
-        break;
-    }
-    return dst-s;
+    return d-s;
 }
