@@ -17,11 +17,11 @@
 # under the License.
 #
 
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 
-project(amqp-value-parser)
+project(amqp-value-parser C)
 
-find_package(Proton 0.28 REQUIRED)
+find_package(Proton 0.37 REQUIRED)
 
 add_compile_options(-Wall)
 
@@ -43,14 +43,14 @@ add_custom_command (OUTPUT amqp-value.re.c
 
 add_library (amqp-value STATIC
              amqp-value.c)
-target_link_libraries (amqp-value Proton::core)
+target_link_libraries (amqp-value PRIVATE Proton::core)
 target_include_directories(amqp-value PRIVATE ${CMAKE_SOURCE_DIR})
 
 add_executable (amqp-value-test main.c)
-target_link_libraries (amqp-value-test amqp-value Proton::core)
+target_link_libraries (amqp-value-test PRIVATE amqp-value Proton::core)
 
 add_executable (frame-dump-tester frame_dump_tester.c)
-target_link_libraries (frame-dump-tester amqp-value Proton::core readline)
+target_link_libraries (frame-dump-tester PRIVATE amqp-value Proton::core readline)
 
 install (TARGETS amqp-value-test
          RUNTIME DESTINATION "bin"

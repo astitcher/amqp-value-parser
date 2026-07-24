@@ -8,7 +8,7 @@
 
 extern int pn_data_parse(pn_data_t* data, size_t len, const char* s);
 extern int pn_data_parse_string(pn_data_t* data, const char* s);
-extern size_t pn_value_dump(pn_bytes_t frame, pn_string_t *output);
+extern size_t pn_value_dump(pn_bytes_t frame, char* out, uint32_t out_size);
 
 void hexdump(size_t size, const char* buffer)
 {
@@ -85,9 +85,9 @@ void process(pn_data_t* data, const char* str)
 
     pn_bytes_t bytes = {.size=s,.start=buffer};
     while (bytes.size>0) {
-      pn_string_t* out = pn_string("");
-      size_t ds = pn_value_dump(bytes, out);
-      printf("%s\n", pn_string_get(out));
+      char out[2048];
+      size_t ds = pn_value_dump(bytes, out, sizeof(out));
+      printf("%s\n", out);
       printf("(Decoded %zd bytes)\n", ds);
 
       bytes.size  -= ds;
